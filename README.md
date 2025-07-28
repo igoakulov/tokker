@@ -26,19 +26,19 @@ TBD
 ### Get full output
 
 ```bash
-$ tokker --text "hello world"
+$ tokker --text 'hello world'
 {
-  "converted": "hello⎮ world",
-  "token_strings": ["hello", " world"],
-  "token_ids": [15339, 1917],
-  "token_count": 2,
-  "word_count": 2,
-  "char_count": 11,
-  "pivot": {
-    "hello": 1,
-    " world": 1
+  'converted': 'hello⎮ world',
+  'token_strings': ['hello', ' world'],
+  'token_ids': [15339, 1917],
+  'token_count': 2,
+  'word_count': 2,
+  'char_count': 11,
+  'pivot': {
+    'hello': 1,
+    ' world': 1
   },
-  "tokenizer": "cl100k_base"
+  'tokenizer': 'cl100k_base'
 }
 ```
 
@@ -47,7 +47,7 @@ $ tokker --text "hello world"
 ### Get plain (delimited) text
 
 ```bash
-$ tokker --text "hello world" --format plain
+$ tokker --text 'hello world' --format plain
 Hello⎮ world
 ```
 
@@ -56,12 +56,12 @@ Hello⎮ world
 ### Get summary
 
 ```bash
-$ tokker --text "hello world" --format summary
+$ tokker --text 'hello world' --format summary
 {
-  "token_count": 2,
-  "word_count": 2,
-  "char_count": 11,
-  "tokenizer": "o200k_base"
+  'token_count': 2,
+  'word_count': 2,
+  'char_count': 11,
+  'tokenizer': 'o200k_base'
 }
 ```
 
@@ -70,7 +70,7 @@ $ tokker --text "hello world" --format summary
 ### Run specific (non-default) tokenizer
 
 ``` bash
-$ tokker --text "hello world" --tokenizer o200k_base
+$ tokker --text 'hello world' --tokenizer o200k_base
 ```
 
 ---
@@ -92,8 +92,8 @@ Tokker stores configuration in `~/.config/tokker/tokenizer_config.json`:
 
 ```json
 {
-  "default_tokenizer": "cl100k_base",
-  "delimiter": "⎮"
+  'default_tokenizer': 'cl100k_base',
+  'delimiter': '⎮'
 }
 ```
 

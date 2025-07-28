@@ -15,29 +15,30 @@ from .utils import tokenize_text, format_plain_output, format_summary_output, va
 def create_parser() -> argparse.ArgumentParser:
     """Create and configure argument parser."""
     parser = argparse.ArgumentParser(
-        description="Tokker CLI - Tokenize text using OpenAI tiktoken",
+        description="Tok CLI - Tokenize text using OpenAI tiktoken",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python -m tokker --text "Hello world"
-  python -m tokker --text "Hello world" --tokenizer o200k_base
-  python -m tokker --text "Hello world" --format plain
-  python -m tokker --set-default-tokenizer o200k_base
+  tok 'Hello world'
+  echo 'Hello world' | tok
+  tok 'Hello world' --tokenizer cl100k_base
+  tok 'Hello world' --format plain
+  tok --set-default-tokenizer cl100k_base
         """
     )
 
-    # Text input for tokenization
+    # Text input for tokenization (positional argument)
     parser.add_argument(
-        "--text",
-        type=str,
-        help="Text to tokenize"
+        "text",
+        nargs="?",
+        help="Text to tokenize (or read from stdin if not provided)"
     )
 
     # Tokenizer selection
     parser.add_argument(
         "--tokenizer",
         type=str,
-        choices=sorted(config.get_valid_tokenizers()),
+        choices=["o200k_base", "cl100k_base"],
         help="Tokenizer to use (overrides default)"
     )
 
@@ -54,7 +55,7 @@ Examples:
     parser.add_argument(
         "--set-default-tokenizer",
         type=str,
-        choices=sorted(config.get_valid_tokenizers()),
+        choices=["o200k_base", "cl100k_base"],
         help="Set the default tokenizer in configuration"
     )
 
@@ -114,12 +115,20 @@ def main() -> int:
         handle_set_default_tokenizer(args.set_default_tokenizer)
         return 0
 
-    # Handle tokenization
+    # Determine text source: command line argument or stdin
+    text = None
     if args.text is not None:
-        handle_tokenize(args.text, args.tokenizer, args.format)
+        text = args.text
+    elif not sys.stdin.isatty():
+        # Read from stdin (piped input)
+        text = sys.stdin.read().strip()
+
+    # Handle tokenization
+    if text is not None and text:
+        handle_tokenize(text, args.tokenizer, args.format)
         return 0
 
-    # No arguments provided
+    # No text provided from either source
     parser.print_help()
     return 1
 

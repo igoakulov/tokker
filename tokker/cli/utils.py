@@ -16,7 +16,7 @@ def get_tokenizer(tokenizer_name: str) -> tiktoken.Encoding:
     Get tiktoken tokenizer by name.
 
     Args:
-        tokenizer_name: Name of the tokenizer ('cl100k_base' or 'o200k_base')
+        tokenizer_name: Name of the tokenizer ('o200k_base' or 'cl100k_base')
 
     Returns:
         tiktoken.Encoding instance
@@ -30,7 +30,7 @@ def get_tokenizer(tokenizer_name: str) -> tiktoken.Encoding:
         raise ValueError(f"Invalid tokenizer '{tokenizer_name}': {e}")
 
 
-def tokenize_text(text: str, tokenizer_name: str = "cl100k_base", delimiter: str = "⏐") -> Dict[str, Any]:
+def tokenize_text(text: str, tokenizer_name: str = "o200k_base", delimiter: str = "⏐") -> Dict[str, Any]:
     """
     Tokenize text using specified tokenizer.
 
@@ -99,7 +99,7 @@ def count_characters(text: str) -> int:
     return len(text)
 
 
-def count_tokens(text: str, tokenizer_name: str = "cl100k_base") -> int:
+def count_tokens(text: str, tokenizer_name: str = "o200k_base") -> int:
     """
     Count tokens in text using specified tokenizer.
 

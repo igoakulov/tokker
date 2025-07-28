@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tokker"
-version = "0.1.0"
-description = "A CLI tool for token counting and analysis using OpenAI's tiktoken"
+version = "0.1.2"
+description = "A fast, simple CLI tool for tokenizing text using OpenAI's tiktoken library"
 authors = [
-    {name = "igoakulov", email = "your.email@example.com"}
+    {name = "igoakulov", email = "igoruphere@gmail.com"}
 ]
 readme = "README.md"
 license = "MIT"
@@ -37,7 +37,7 @@ Issues = "https://github.com/igoakulov/tokker/issues"
 Documentation = "https://github.com/igoakulov/tokker#readme"
 
 [project.scripts]
-tokker = "tokker.cli:main"
+tok = "tokker.cli.tokenize:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

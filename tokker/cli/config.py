@@ -11,12 +11,12 @@ from typing import Dict, Any
 
 # Default configuration values
 DEFAULT_CONFIG = {
-    "default_tokenizer": "cl100k_base",
+    "default_tokenizer": "o200k_base",
     "delimiter": "⎮"
 }
 
 # Valid tokenizer names
-VALID_TOKENIZERS = {"cl100k_base", "o200k_base"}
+VALID_TOKENIZERS = {"o200k_base", "cl100k_base"}
 
 class ConfigError(Exception):
     """Raised when configuration operations fail."""

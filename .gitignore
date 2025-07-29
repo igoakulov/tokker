@@ -148,3 +148,41 @@ $RECYCLE.BIN/
 
 # Linux
 *~
+
+# Development and testing files
+test_smoke.py
+tests/
+COMPLETION_SUMMARY.md
+IMPLEMENTATION_PLAN.md
+
+# Documentation drafts
+*-docs/
+docs-*/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store?
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Local configuration
+.env.local
+.env.development
+.env.test
+
+# Editor temporary files
+*.swp
+*.swo
+*~
+.vscode/settings.json
+.idea/workspace.xml

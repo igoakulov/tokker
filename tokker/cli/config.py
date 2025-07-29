@@ -84,12 +84,8 @@ class Config:
 
     def set_default_tokenizer(self, tokenizer: str) -> None:
         """Set the default tokenizer in configuration."""
-        if tokenizer not in VALID_TOKENIZERS:
-            raise ConfigError(
-                f"Invalid tokenizer: {tokenizer}. "
-                f"Valid options: {', '.join(sorted(VALID_TOKENIZERS))}"
-            )
-
+        # Validation is now handled by the CLI layer using the registry
+        # This keeps the config system focused on configuration management
         config = self.load()
         config["default_tokenizer"] = tokenizer
         self.save(config)
@@ -100,7 +96,11 @@ class Config:
         return config.get("delimiter", DEFAULT_CONFIG["delimiter"])
 
     def get_valid_tokenizers(self) -> set:
-        """Get set of valid tokenizer names."""
+        """Get set of valid tokenizer names.
+
+        NOTE: This method is deprecated. Use the tokenizer registry instead.
+        Kept for backward compatibility.
+        """
         return VALID_TOKENIZERS.copy()
 
 # Global configuration instance

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tokker"
-version = "0.1.2"
-description = "A fast, simple CLI tool for tokenizing text using OpenAI's tiktoken library"
+version = "0.2.0"
+description = "A fast, simple CLI tool for tokenizing text using OpenAI's tiktoken library and HuggingFace transformers"
 authors = [
     {name = "igoakulov", email = "igoruphere@gmail.com"}
 ]
@@ -14,6 +14,7 @@ license = "MIT"
 requires-python = ">=3.8"
 dependencies = [
     "tiktoken>=0.5.0",
+    "transformers>=4.40.0",
 ]
 keywords = ["tokenization", "tokens", "tiktoken", "openai", "cli", "text-analysis"]
 classifiers = [

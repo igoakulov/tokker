@@ -11,44 +11,44 @@ import re
 import json
 
 
-def get_tokenizer(tokenizer_name: str) -> tiktoken.Encoding:
+def get_model_encoding(model_name: str) -> tiktoken.Encoding:
     """
-    Get tiktoken tokenizer by name.
+    Get tiktoken model by name.
 
     Args:
-        tokenizer_name: Name of the tokenizer ('o200k_base' or 'cl100k_base')
+        model_name: Name of the model ('o200k_base' or 'cl100k_base')
 
     Returns:
         tiktoken.Encoding instance
 
     Raises:
-        ValueError: If tokenizer_name is invalid
+        ValueError: If model name is invalid
     """
     try:
-        return tiktoken.get_encoding(tokenizer_name)
+        return tiktoken.get_encoding(model_name)
     except Exception as e:
-        raise ValueError(f"Invalid tokenizer '{tokenizer_name}': {e}")
+        raise ValueError(f"Invalid model '{model_name}': {e}")
 
 
-def tokenize_text(text: str, tokenizer_name: str = "o200k_base", delimiter: str = "⏐") -> Dict[str, Any]:
+def tokenize_text(text: str, model_name: str = "o200k_base", delimiter: str = "⏐") -> Dict[str, Any]:
     """
-    Tokenize text using specified tokenizer.
+    Tokenize text using specified model.
 
     Args:
         text: Input text to tokenize
-        tokenizer_name: Name of tokenizer to use
+        model_name: Name of model to use
         delimiter: Delimiter to use for joining token strings
 
     Returns:
         Dictionary containing tokenization results
     """
-    tokenizer = get_tokenizer(tokenizer_name)
+    model_encoding = get_model_encoding(model_name)
 
     # Get token IDs
-    token_ids = tokenizer.encode(text)
+    token_ids = model_encoding.encode(text)
 
     # Get token strings
-    tokens = [tokenizer.decode([token_id]) for token_id in token_ids]
+    tokens = [model_encoding.decode([token_id]) for token_id in token_ids]
 
     # Create pivot dictionary for word frequency
     pivot = {}
@@ -64,7 +64,7 @@ def tokenize_text(text: str, tokenizer_name: str = "o200k_base", delimiter: str 
         "word_count": count_words(text),
         "char_count": len(text),
         "pivot": pivot,
-        "tokenizer": tokenizer_name
+        "model": model_name
     }
 
 
@@ -99,19 +99,19 @@ def count_characters(text: str) -> int:
     return len(text)
 
 
-def count_tokens(text: str, tokenizer_name: str = "o200k_base") -> int:
+def count_tokens(text: str, model_name: str = "o200k_base") -> int:
     """
-    Count tokens in text using specified tokenizer.
+    Count tokens in text using specified model.
 
     Args:
         text: Input text
-        tokenizer_name: Name of tokenizer to use
+        model_name: Name of model to use
 
     Returns:
         Number of tokens
     """
-    tokenizer = get_tokenizer(tokenizer_name)
-    return len(tokenizer.encode(text))
+    model_encoding = get_model_encoding(model_name)
+    return len(model_encoding.encode(text))
 
 
 def format_plain_output(tokenization_result: Dict[str, Any], delimiter: str = "⏐") -> str:
@@ -143,25 +143,27 @@ def format_summary_output(tokenization_result: Dict[str, Any]) -> Dict[str, Any]
         "token_count": tokenization_result["token_count"],
         "word_count": tokenization_result["word_count"],
         "char_count": tokenization_result["char_count"],
-        "tokenizer": tokenization_result["tokenizer"]
+        "model": tokenization_result["model"]
     }
 
 
-def validate_tokenizer(tokenizer_name: str, valid_tokenizers: set) -> None:
+def validate_model(model_name: str, valid_models: set) -> None:
     """
-    Validate tokenizer name against valid options.
+    Validate model name against valid options.
+
+    DEPRECATED: Use registry.validate_model() instead.
 
     Args:
-        tokenizer_name: Name to validate
-        valid_tokenizers: Set of valid tokenizer names
+        model_name: Name to validate
+        valid_models: Set of valid model names
 
     Raises:
-        ValueError: If tokenizer_name is invalid
+        ValueError: If model name is invalid
     """
-    if tokenizer_name not in valid_tokenizers:
+    if model_name not in valid_models:
         raise ValueError(
-            f"Invalid tokenizer: {tokenizer_name}. "
-            f"Valid options: {', '.join(sorted(valid_tokenizers))}"
+            f"Invalid model: {model_name}. "
+            f"Valid options: {', '.join(sorted(valid_models))}"
         )
 
 

@@ -150,10 +150,8 @@ $RECYCLE.BIN/
 *~
 
 # Development and testing files
-test_smoke.py
 tests/
-COMPLETION_SUMMARY.md
-IMPLEMENTATION_PLAN.md
+Makefile
 
 # Documentation drafts
 *-docs/

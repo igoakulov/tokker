@@ -1,24 +1,25 @@
 # Tokker
 
-A fast, simple CLI tool for tokenizing text using OpenAI's `tiktoken` library and HuggingFace transformers. Get accurate token counts for GPT models, LLaMA, BERT and more with a single command.
+Tokker is a fast local-first CLI tool for tokenizing text with all the best models in one place.
 
 ---
 
 ## Features
 
 - **Simple Usage**: Just `tok 'your text'` - that's it!
-- **26 Tokenizers**: Best from OpenAI's tiktoken (tt) and HuggingFace transformers (hf) libraries - GPT, Deepseek, Llama, Qwen, Bert and other tokenizers - all in one place.
-- **Flexible Output**: JSON, plain text, and summary output formats
-- **Configuration**: Persistent configuration for default tokenizer and delimiter
+- **Models**:
+  - OpenAI: GPT-3, GPT-3.5, GPT-4, GPT-4o, o-family (o1, o3, o4)
+  - HuggingFace: select literally [any model](https://huggingface.co/models?library=transformers) that supports `transformers` library
+- **Flexible Output**: JSON, plain text, and count output formats
+- **Model History**: Track your usage with `--history` and `--history-clear`
+- **Configuration**: Persistent configuration for default model and settings
 - **Text Analysis**: Token count, word count, character count, and token frequency
 - **Cross-platform**: Works on Windows, macOS, and Linux
-- **100% local**: Works fully locally on device after installation
+- **99% local**: Works fully locally on device (besides initial model load)
 
 ---
 
 ## Installation
-
-Install from PyPI with pip:
 
 ```bash
 pip install tokker
@@ -31,8 +32,9 @@ That's it! The `tok` command is now available in your terminal.
 ## Command Reference
 
 ```
-usage: tok [-h] [--tokenizer TOKENIZER] [--format {json,plain,summary}]
-           [--tokenizer-default TOKENIZER] [--tokenizer-list]
+usage: tok [-h] [--model MODEL] [--output {json,plain,count,table}]
+           [--model-default MODEL_DEFAULT] [--models]
+           [--history] [--history-clear]
            [text]
 
 positional arguments:
@@ -40,113 +42,105 @@ positional arguments:
 
 options:
   -h, --help           Show this help message and exit
-  --tokenizer TOKENIZER
-                       Tokenizer to use (overrides default). Use --tokenizer-list to see available options
-  --format {json,plain,summary}
+  --model MODEL        Model to use (overrides default). Use --models to see available options
+  --output {json,plain,count,table}
                        Output format (default: json)
-  --tokenizer-default TOKENIZER
-                       Set the default tokenizer in configuration. Use --tokenizer-list to see available options
-  --tokenizer-list     List all available tokenizers with descriptions
+  --model-default MODEL_DEFAULT
+                       Set the default model in configuration. Use --models to see available options
+  --models             List all available models with descriptions
+  --history            Show history of used models, with most recent on top
+  --history-clear      Clear model usage history
 ```
 
 ## Usage
 
 Tip: When using `bash` or `zsh`, wrap input text in single quotes ('like this'). Double quotes cause issues with special characters such as `!` (used for history expansion).
 
-### Tokenize
+### Tokenize Text
 
 ```bash
-# Tokenize with default tokenizer
+# Tokenize with default model
 tok 'Hello world'
 
 # Get a specific output format
-tok 'Hello world' --format plain
+tok 'Hello world' --output plain
 
-# Use a specific tokenizer
-tok 'Hello world' --tokenizer gpt2
+# Use a specific model
+tok 'Hello world' --model gpt2
 
-# Pipe text from other commands
-echo "Hello world" | tok
-cat file.txt | tok --format summary
+# Get just the counts
+tok 'Hello world' --output count
 ```
 
-### Tokenize (Pipeline)
+### Pipeline Usage
 
 ```bash
 # Process files
-cat document.txt | tok --tokenizer gpt2 --format summary
+cat document.txt | tok --model gpt2 --output count
 
 # Chain with other tools
-curl -s https://example.com | tok --tokenizer bert-base-uncased
+curl -s https://example.com | tok --model bert-base-uncased
 
-# Compare tokenizers
-echo "Machine learning is awesome" | tok --tokenizer gpt2
-echo "Machine learning is awesome" | tok --tokenizer bert-base-uncased
+# Compare models
+echo "Machine learning is awesome" | tok --model gpt2
+echo "Machine learning is awesome" | tok --model bert-base-uncased
 ```
 
-### List Available Tokenizers
+### List Available Models
 
 ```bash
-# See all available tokenizers
-tok --tokenizer-list
+# See all available models
+tok --models
 ```
 
 Output:
 ```
-DeepSeek Family:
-================
-  deepseek-ai/DeepSeek-Coder-V2-Base    (hf) — BPE, used by DeepSeek-Coder-V2
-  deepseek-ai/DeepSeek-V2               (hf) — BPE, used by DeepSeek-V2
+--- OpenAI ---
+cl100k_base     ->   used in GPT-3.5 (late), GPT-4
+o200k_base      ->   used in GPT-4o, o-family (o1, o3, o4)
+p50k_base       ->   used in GPT-3.5 (early)
+p50k_edit       ->   used in GPT-3 edit models for text and code (text-davinci, code-davinci)
+r50k_base       ->   used in GPT-3 base models (davinci, curie, babbage, ada)
 
-GPT Family:
-===========
-  cl100k_base                           (tt) — BPE, used by GPT-3.5, GPT-4
-  gpt2                                  (hf) — BPE, used by GPT-2
-  o200k_base                            (tt) — BPE, used by GPT-4o, o-family (o1, o3, o4)
-  p50k_base                             (tt) — BPE, used by GPT-3.5
-  p50k_edit                             (tt) — BPE, used by GPT-3 edit models for text and code
-  r50k_base                             (tt) — BPE, used by GPT-3 base models
+--- HuggingFace ---
+BYOM - Bring You Own Model:
+1. Go to   ->   https://huggingface.co/models?library=transformers
+2. Search any model with TRANSFORMERS library support
+3. Copy its `USER/MODEL-NAME` into your command:
 
-LLaMA Family:
-=============
-  meta-llama/Llama-2-70b-hf             (hf) — BPE, used by LLaMA-2
-  meta-llama/Meta-Llama-3-70B           (hf) — BPE, used by LLaMA-3
-  meta-llama/Meta-Llama-3.1-405B        (hf) — BPE, used by LLaMA-3.1
+deepseek-ai/DeepSeek-R1
+google-bert/bert-base-uncased
+google/gemma-3n-E4B-it
+meta-llama/Meta-Llama-3.1-405B
+mistralai/Devstral-Small-2507
+moonshotai/Kimi-K2-Instruct
+Qwen/Qwen3-Coder-480B-A35B-Instruct
+Etc.
 
-Qwen Family:
-============
-  Qwen/Qwen-72B                         (hf) — BPE, used by Qwen
-  Qwen/Qwen1.5-110B                     (hf) — BPE, used by Qwen1.5
-  Qwen/Qwen2-72B                        (hf) — BPE, used by Qwen2
-  Qwen/Qwen2.5-72B                      (hf) — BPE, used by Qwen2.5
-
-Other:
-======
-  allenai/longformer-base-4096          (hf) — BPE, used by Longformer
-  bert-base-cased                       (hf) — WordPiece, used by BERT
-  bert-base-uncased                     (hf) — WordPiece, used by BERT
-  distilbert-base-cased                 (hf) — WordPiece, used by DistilBERT
-  distilbert-base-uncased               (hf) — WordPiece, used by DistilBERT
-  facebook/bart-base                    (hf) — BPE, used by BART
-  google/electra-base-discriminator     (hf) — WordPiece, used by ELECTRA
-  microsoft/deberta-base                (hf) — SentencePiece, used by DeBERTa
-  roberta-base                          (hf) — BPE, used by RoBERTa
-  t5-base                               (hf) — SentencePiece, used by T5
-  xlnet-base-cased                      (hf) — SentencePiece, used by XLNet
+--- Related Commands ---
+`--model-default 'model-name'` to set default model
+`--history` to view all models you have used
 ```
 
-### Set Default Tokenizer
+### Set Default Model
 
 ```bash
-# Set your preferred tokenizer
-tok --tokenizer-default o200k_base
+# Set your preferred model
+tok --model-default o200k_base
 ```
 
-Output:
+### History
+
+```bash
+# View your model usage history with date/time
+tok --history
+
+# Clear your history
+tok --history-clear
 ```
-✓ Default tokenizer set to: o200k_base (tt) — BPE, used by GPT-4o, o-family (o1, o3, o4)
-Configuration saved to: ~/.config/tokker/tokenizer_config.json
-```
+
+History is stored locally in `~/.config/tokker/history.json`.
+
 
 ---
 
@@ -167,50 +161,39 @@ $ tok 'Hello world'
     "Hello": 1,
     " world": 1
   },
-  "tokenizer": "o200k_base",
-  "library": "tt"
+  "model": "o200k_base",
+  "provider": "OpenAI"
 }
 ```
 
 ### Plain Text Output
 
 ```bash
-$ tok 'Hello world' --format plain
+$ tok 'Hello world' --output plain
 Hello⎮ world
 ```
 
-### Summary Output
+### Count Output
 
 ```bash
-$ tok 'Hello world' --format summary
+$ tok 'Hello world' --output count
 {
   "token_count": 2,
   "word_count": 2,
   "char_count": 11,
-  "tokenizer": "o200k_base",
-  "library": "tt"
+  "model": "o200k_base"
 }
-```
-
-### Tokenizer List JSON
-
-```bash
-# Get tokenizer list as JSON
-tok --tokenizer-list --format json
-
-# Process and extract token count
-tok 'Hello world' --format summary | jq '.token_count'
 ```
 
 ---
 
 ## Configuration
 
-Tokker stores your preferences in `~/.config/tokker/tokenizer_config.json`:
+Your configuration is stored locally in `~/.config/tokker/config.json`:
 
 ```json
 {
-  "default_tokenizer": "o200k_base",
+  "default_model": "o200k_base",
   "delimiter": "⎮"
 }
 ```
@@ -229,13 +212,13 @@ count = tokker.count_tokens("Hello world", "o200k_base")
 print(f"Token count: {count}")
 
 # Full tokenization
-result = tokker.tokenize("Hello world", "gpt2")
+result = tokker.tokenize_text("Hello world", "gpt2")
 print(result["token_count"])
 
-# List available tokenizers
-tokenizers = tokker.list_tokenizers()
-for tokenizer in tokenizers:
-    print(f"{tokenizer['name']} ({tokenizer['library']}) — {tokenizer['description']}")
+# Word and character counts
+words = tokker.count_words("Hello world")
+chars = tokker.count_characters("Hello world")
+print(f"Words: {words}, Characters: {chars}")
 ```
 
 ---

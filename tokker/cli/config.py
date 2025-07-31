@@ -2,33 +2,31 @@
 """
 Configuration management for Tokker CLI.
 
-Handles loading and saving tokenizer configuration from ~/.config/tokker/tokenizer_config.json
+Handles loading and saving model configuration from ~/.config/tokker/model_config.json
 """
 
 import json
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List
+from datetime import datetime
 
 # Default configuration values
 DEFAULT_CONFIG = {
-    "default_tokenizer": "o200k_base",
+    "default_model": "o200k_base",
     "delimiter": "⎮"
 }
-
-# Valid tokenizer names
-VALID_TOKENIZERS = {"o200k_base", "cl100k_base"}
 
 class ConfigError(Exception):
     """Raised when configuration operations fail."""
     pass
 
 class Config:
-    """Manages tokenizer configuration."""
+    """Manages model configuration."""
 
     def __init__(self):
         """Initialize configuration manager."""
         self.config_dir = Path.home() / ".config" / "tokker"
-        self.config_file = self.config_dir / "tokenizer_config.json"
+        self.config_file = self.config_dir / "config.json"
         self._config = None
 
     def _ensure_config_dir(self) -> None:
@@ -77,17 +75,17 @@ class Config:
         except IOError as e:
             raise ConfigError(f"Error saving configuration: {e}")
 
-    def get_default_tokenizer(self) -> str:
-        """Get the default tokenizer from configuration."""
+    def get_default_model(self) -> str:
+        """Get the default model from configuration."""
         config = self.load()
-        return config.get("default_tokenizer", DEFAULT_CONFIG["default_tokenizer"])
+        return config.get("default_model", DEFAULT_CONFIG["default_model"])
 
-    def set_default_tokenizer(self, tokenizer: str) -> None:
-        """Set the default tokenizer in configuration."""
+    def set_default_model(self, model: str) -> None:
+        """Set the default model in configuration."""
         # Validation is now handled by the CLI layer using the registry
         # This keeps the config system focused on configuration management
         config = self.load()
-        config["default_tokenizer"] = tokenizer
+        config["default_model"] = model
         self.save(config)
 
     def get_delimiter(self) -> str:
@@ -95,13 +93,69 @@ class Config:
         config = self.load()
         return config.get("delimiter", DEFAULT_CONFIG["delimiter"])
 
-    def get_valid_tokenizers(self) -> set:
-        """Get set of valid tokenizer names.
 
-        NOTE: This method is deprecated. Use the tokenizer registry instead.
-        Kept for backward compatibility.
-        """
-        return VALID_TOKENIZERS.copy()
+
+    def get_history_file(self) -> Path:
+        """Get the path to the model history file."""
+        return self.config_dir / "history.json"
+
+    def load_model_history(self) -> List[Dict[str, Any]]:
+        """Load model usage history from file."""
+        history_file = self.get_history_file()
+
+        if not history_file.exists():
+            return []
+
+        try:
+            with open(history_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            # If history file is corrupted, start fresh
+            return []
+
+    def save_model_history(self, history: List[Dict[str, Any]]) -> None:
+        """Save model usage history to file."""
+        self._ensure_config_dir()
+        history_file = self.get_history_file()
+
+        try:
+            with open(history_file, 'w', encoding='utf-8') as f:
+                json.dump(history, f, indent=2, ensure_ascii=False)
+        except IOError as e:
+            raise ConfigError(f"Error saving model history: {e}")
+
+    def add_model_to_history(self, model_name: str) -> None:
+        """Add a model to usage history, moving it to the top if it already exists."""
+        history = self.load_model_history()
+
+        # Remove existing entry if present
+        history = [entry for entry in history if entry.get('model') != model_name]
+
+        # Add new entry at the top
+        new_entry = {
+            'model': model_name,
+            'timestamp': datetime.now().isoformat(),
+            'count': 1
+        }
+
+        # Update count if we're re-adding
+        for entry in history:
+            if entry.get('model') == model_name:
+                new_entry['count'] = entry.get('count', 0) + 1
+                break
+
+        history.insert(0, new_entry)
+
+        # Keep only the last 50 entries to prevent unbounded growth
+        history = history[:50]
+
+        self.save_model_history(history)
+
+    def clear_model_history(self) -> None:
+        """Clear all model usage history."""
+        history_file = self.get_history_file()
+        if history_file.exists():
+            history_file.unlink()
 
 # Global configuration instance
 config = Config()

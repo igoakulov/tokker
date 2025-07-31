@@ -1,0 +1,49 @@
+# MANIFEST.in for Tokker - Package distribution manifest
+
+# Include essential project files
+include README.md
+include LICENSE
+include pyproject.toml
+
+# exclude requirements.txt (dependencies are in pyproject.toml)
+exclude requirements.txt
+
+# Include the main package
+recursive-include tokker *.py
+
+# Exclude tests
+prune tokker/tests
+
+# Exclude development and build artifacts
+exclude .gitignore
+exclude Makefile
+
+# Exclude hidden files and directories
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store
+global-exclude .coverage
+global-exclude .pytest_cache
+
+# Exclude development directories
+prune .git
+prune .ropeproject
+prune venv
+prune env
+prune build
+prune dist
+prune *.egg-info
+prune .vscode
+prune .idea
+
+# Exclude documentation drafts
+global-exclude *-docs/*
+global-exclude docs-*/*
+
+# Exclude temporary files
+global-exclude *.tmp
+global-exclude *.temp
+global-exclude *~
+global-exclude *.swp
+global-exclude *.swo

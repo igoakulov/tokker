@@ -4,6 +4,13 @@ HuggingFace model implementation for the Tokker plugin system.
 This module provides HuggingFace transformers model support through the unified
 BaseModel interface using AutoTokenizer.from_pretrained().
 """
+import os
+
+# Suppress advisory and TensorFlow-related warnings from transformers at import time.
+# This prevents messages like "None of PyTorch, TensorFlow >= 2.0, or Flax have been found..."
+# from appearing when we only need tokenizers.
+os.environ.setdefault("TRANSFORMERS_NO_TF_WARNING", "1")
+os.environ.setdefault("TRANSFORMERS_NO_ADVISORY_WARNINGS", "1")
 
 from typing import List, Dict, Any
 import logging
@@ -60,7 +67,18 @@ class HuggingFaceModel(BaseModel):
             return self._model_cache[model_name]
 
         try:
-            from transformers import AutoTokenizer  # type: ignore
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                from transformers import AutoTokenizer  # type: ignore
+                # Suppress framework availability warnings (PyTorch/TF/Flax not found).
+                # We only need tokenizers for Tokker; actual model runtimes are not required.
+                try:
+                    from transformers.utils import logging as hf_logging  # type: ignore
+                    hf_logging.set_verbosity_error()
+                except Exception:
+                    # If transformers logging utilities are unavailable, continue silently.
+                    pass
         except ImportError:
             raise MissingDependencyError(
                 "transformers is required for HuggingFace models. "
@@ -163,14 +181,23 @@ class HuggingFaceModel(BaseModel):
 
         # Try to actually load the model to validate it
         try:
-            from transformers import AutoTokenizer  # type: ignore
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                from transformers import AutoTokenizer  # type: ignore
+                # Suppress framework availability warnings during validation as well.
+                try:
+                    from transformers.utils import logging as hf_logging  # type: ignore
+                    hf_logging.set_verbosity_error()
+                except Exception:
+                    pass
 
-            # Try to load the model (this will validate it exists)
-            AutoTokenizer.from_pretrained(
-                model_name,
-                use_fast=True,
-                trust_remote_code=False
-            )
+                # Try to load the model (this will validate it exists)
+                AutoTokenizer.from_pretrained(
+                    model_name,
+                    use_fast=True,
+                    trust_remote_code=False
+                )
             return True
 
         except ImportError:

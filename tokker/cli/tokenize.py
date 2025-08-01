@@ -7,12 +7,110 @@ Provides the main CLI interface for tokenizing text and managing model settings.
 
 import argparse
 import sys
-from typing import Optional
+import subprocess
+from typing import Optional, Dict, Any
 from .config import config
 from datetime import datetime
-from .utils import format_plain_output, format_summary_output, format_json_output, count_words
+from .utils import format_plain_output, format_json_output, count_words
 from tokker.models.registry import get_registry
 from tokker import __description__
+
+
+def _build_cli_output_structure(tokenization_result: Dict[str, Any], text: str, delimiter: str) -> Dict[str, Any]:
+    """
+    Build the CLI output structure from the provider-agnostic base result.
+
+    Args:
+        tokenization_result: Result returned by the model registry (provider-agnostic)
+        text: Original input text
+        delimiter: Delimiter to join token strings
+
+    Returns:
+        Dictionary with CLI output fields consumed by formatters
+    """
+    token_strings = tokenization_result['token_strings']
+
+    # Create pivot dictionary for token frequency analysis
+    pivot = {}
+    for token_text in token_strings:
+        if token_text:
+            pivot[token_text] = pivot.get(token_text, 0) + 1
+
+    return {
+        "converted": delimiter.join(token_strings),
+        "token_strings": token_strings,
+        "token_ids": tokenization_result['token_ids'],
+        "token_count": tokenization_result['token_count'],
+        "word_count": count_words(text),
+        "char_count": len(text),
+        "pivot": pivot
+    }
+
+
+def _format_and_print_output(result: Dict[str, Any], output_format: str, delimiter: str) -> None:
+    """
+    Format and print the CLI output based on the selected output format.
+
+    Args:
+        result: CLI output structure dictionary
+        output_format: One of 'json', 'plain', 'count', 'table'
+        delimiter: Delimiter for plain output
+    """
+    if output_format == "json":
+        # Exclude pivot/model/provider from JSON output
+        json_result = {
+            "converted": result["converted"],
+            "token_strings": result["token_strings"],
+            "token_ids": result["token_ids"],
+            "token_count": result["token_count"],
+            "word_count": result["word_count"],
+            "char_count": result["char_count"]
+        }
+        print(format_json_output(json_result))
+    elif output_format == "plain":
+        plain_output = format_plain_output(result, delimiter)
+        print(plain_output)
+    elif output_format == "count":
+        # Exclude model/provider from count summary
+        count_summary = {
+            "token_count": result["token_count"],
+            "word_count": result["word_count"],
+            "char_count": result["char_count"]
+        }
+        print(format_json_output(count_summary))
+    elif output_format == "pivot":
+        # Print pivot only, sorted by highest count first, then token A–Z
+        pivot = result.get("pivot", {})
+        items = sorted(pivot.items(), key=lambda kv: (-kv[1], kv[0]))
+        table_obj = {k: v for k, v in items}
+        print(format_json_output(table_obj))
+
+
+def _handle_google_auth_failure(original_error: Exception) -> None:
+    """Handle Google provider auth failures by running ADC flow and guiding user to retry."""
+    print(f"Error from Google: {original_error}", file=sys.stderr)
+    print("Attempting to set up Google Application Default Credentials...", file=sys.stderr)
+    print("Running: gcloud auth application-default login", file=sys.stderr)
+
+    try:
+        proc = subprocess.run(
+            ["gcloud", "auth", "application-default", "login"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if proc.stdout:
+            print(proc.stdout, file=sys.stderr, end="")
+        if proc.stderr:
+            print(proc.stderr, file=sys.stderr, end="")
+    except FileNotFoundError:
+        print("gcloud CLI not found. Install the Google Cloud SDK or use a service account JSON:", file=sys.stderr)
+        print("https://cloud.google.com/sdk/docs/install", file=sys.stderr)
+        print("Alternatively, set GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/key.json", file=sys.stderr)
+    except Exception as ge:
+        print(f"Failed to run gcloud auth flow: {ge}", file=sys.stderr)
+
+    print("When authentication completes, please re-run your tok command.", file=sys.stderr)
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -21,16 +119,16 @@ def create_parser() -> argparse.ArgumentParser:
         description=f"Tokker - {__description__}",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+------------
 Examples:
-  tok 'Hello world'
   echo 'Hello world' | tok
-  tok 'Hello world' --model cl100k_base
-  tok 'Hello world' --model gpt2
-  tok 'Hello world' --output count
-  tok --models
-  tok --model-default cl100k_base
-  tok --history
-  tok --history-clear
+  tok 'Hello world'
+  tok 'Hello world' -m deepseek-ai/DeepSeek-R1
+  tok 'Hello world' -m gemini-2.5-pro -o count
+  tok 'Hello world' -o pivot
+  tok -D cl100k_base
+------------
+Google auth setup   →   https://github.com/igoakulov/tokker/blob/main/tokker/google-auth-guide.md
         """
     )
 
@@ -38,50 +136,50 @@ Examples:
     parser.add_argument(
         "text",
         nargs="?",
-        help="Text to tokenize (or read from stdin if not provided)"
+        help="text to tokenize (or read from stdin if not provided)"
     )
 
     # Model selection
     parser.add_argument(
-        "--model",
+        "-m", "--model",
         type=str,
-        help="Model to use (overrides default). Use --models to see available options"
+        help="model to use (overrides default)"
     )
 
     # Output format
     parser.add_argument(
-        "--output",
+        "-o", "--output",
         type=str,
-        choices=["json", "plain", "count", "table"],
+        choices=["json", "plain", "count", "pivot"],
         default="json",
-        help="Output format (default: json)"
+        help="output format (default: json)"
     )
 
     # Set default model
     parser.add_argument(
-        "--model-default",
+        "-D", "--model-default",
         type=str,
-        help="Set the default model in configuration. Use --models to see available options"
+        help="set default model"
     )
 
     # List available models
     parser.add_argument(
-        "--models",
+        "-M", "--models",
         action="store_true",
-        help="List all available models with descriptions"
+        help="list all available models"
     )
 
     # Model history commands
     parser.add_argument(
-        "--history",
+        "-H", "--history",
         action="store_true",
-        help="Show history of used models, with most recent on top"
+        help="show history of used models"
     )
 
     parser.add_argument(
-        "--history-clear",
+        "-X", "--history-clear",
         action="store_true",
-        help="Clear model usage history"
+        help="clear history"
     )
 
     return parser
@@ -93,8 +191,7 @@ def handle_model_default(model: str) -> None:
         # Use registry to validate model and get description
         registry = get_registry()
         if not registry.validate_model(model):
-            print(f"Error: Model '{model}' not found.", file=sys.stderr)
-            print("Use `tok --models` to see all available models.", file=sys.stderr)
+            print(f"Invalid model: {model}.", file=sys.stderr)
             sys.exit(1)
 
         # Get model info for display
@@ -104,16 +201,14 @@ def handle_model_default(model: str) -> None:
         # Set the default model
         config.set_default_model(model)
 
-        # Display confirmation with provider and description
+        # Display confirmation without tick and without description; no surrounding blank lines
         if model_info:
             provider = model_info['provider']
-            description = model_info['description']
-            print(f"✓ Default model set to: {model} ({provider}) - {description}")
+            print(f"Default model set to: {model} ({provider})")
         else:
-            print(f"✓ Default model set to: {model}")
-
+            print(f"Default model set to: {model}")
         print(f"Configuration saved to: {config.config_file}")
-    except Exception as e:
+    except (OSError, RuntimeError, KeyError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -125,47 +220,64 @@ def handle_models() -> None:
         available_models = registry.list_models()
 
         # New template format output (always use template format)
+        print("============")
 
-        # Separate OpenAI and HuggingFace models
+        # Separate OpenAI, Google, and HuggingFace models
         openai_models = []
+        google_models = []
         huggingface_models = []
 
         for model in available_models:
             if model['provider'] == 'OpenAI':
                 openai_models.append(model)
+            elif model['provider'] == 'Google':
+                google_models.append(model)
             elif model['provider'] == 'HuggingFace':
                 huggingface_models.append(model)
 
         # Sort OpenAI models alphabetically
         openai_models.sort(key=lambda x: x['name'])
 
-        # OpenAI section
-        print("--- OpenAI ---")
-        # Static text as per PRD template - not using deprecated description field
+        # OpenAI section (match template headings and spacing)
+        print("OpenAI:\n")
+        # Static descriptions per updated template
         openai_descriptions = {
             "cl100k_base": "used in GPT-3.5 (late), GPT-4",
             "o200k_base": "used in GPT-4o, o-family (o1, o3, o4)",
             "p50k_base": "used in GPT-3.5 (early)",
-            "p50k_edit": "used in GPT-3 edit models for text and code (text-davinci, code-davinci)",
+            "p50k_edit": "used in GPT-3 edit models (text-davinci, code-davinci)",
             "r50k_base": "used in GPT-3 base models (davinci, curie, babbage, ada)"
         }
 
+        # model name padded to 20 chars, 2-space indent, description follows
         for model in openai_models:
             name = model['name']
-            description = openai_descriptions.get(name, "OpenAI model")
-            print(f"{name:<15} ->   {description}")
+            description = openai_descriptions.get(name, None)
+            if description:
+                print(f"  {name:<22}{description}")
 
-        print()
+        print("------------")
+        print("Google:\n")
+        # Show the five supported Gemini models without descriptions in preferred order
+        google_preferred_order = [
+            "gemini-2.5-pro",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-lite",
+        ]
+        google_available = {m['name'] for m in google_models}
+        for gm in google_preferred_order:
+            if gm in google_available:
+                print(f"  {gm}")
+        print("\nAuth setup required   ->   https://github.com/igoakulov/tokker/blob/main/tokker/google-auth-guide.md")
+        print("------------")
+        print("HuggingFace (BYOM - Bring You Own Model):\n")
+        print("  1. Go to   ->   https://huggingface.co/models?library=transformers")
+        print("  2. Search any model with TRANSFORMERS library support")
+        print("  3. Copy its `USER/MODEL` into your command like:\n")
 
-        # HuggingFace section
-        print("--- HuggingFace ---")
-        print("BYOM - Bring You Own Model:")
-        print("1. Go to   ->   https://huggingface.co/models?library=transformers")
-        print("2. Search any model with TRANSFORMERS library support")
-        print("3. Copy its `USER/MODEL-NAME` into your command:")
-        print()
-
-        # Show example HuggingFace models
+        # Example models per template
         example_models = [
             "deepseek-ai/DeepSeek-R1",
             "google-bert/bert-base-uncased",
@@ -174,20 +286,13 @@ def handle_models() -> None:
             "mistralai/Devstral-Small-2507",
             "moonshotai/Kimi-K2-Instruct",
             "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-            "Etc."
         ]
-
         for example in example_models:
-            print(example)
+            print(f"  {example}")
+        # footer double line for end of page
+        print("============")
 
-        print()
-
-        # Related Commands footer
-        print("--- Related Commands ---")
-        print("`--model-default 'model-name'` to set default model")
-        print("`--history` to view all models you have used")
-
-    except Exception as e:
+    except (OSError, RuntimeError, KeyError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -198,36 +303,32 @@ def handle_history() -> None:
     try:
         history = config.load_model_history()
 
+        # page header
+        print("============")
+        print("History:\n")
+
         if not history:
-            print("Your history is empty.")
-            print()
-            print("--- Related Commands ---")
-            print("`--model-default 'model-name'` to set default model")
-            print("`--history-clear` to clear your history")
+            print("History empty.\n")
+            print("============")
             return
 
-        print("Model History (most recent first):")
-        print()
+        # list entries (most recent first)
         for entry in history:
             model_name = entry.get('model', 'unknown')
             timestamp = entry.get('timestamp', '')
-            # Format timestamp for better readability
             if timestamp:
                 try:
                     dt = datetime.fromisoformat(timestamp)
                     formatted_time = dt.strftime('%Y-%m-%d %H:%M')
-                    print(f"  {model_name:<30} (used: {formatted_time})")
+                    print(f"  {model_name:<32}{formatted_time}")
                 except (ValueError, TypeError):
                     print(f"  {model_name}")
             else:
                 print(f"  {model_name}")
 
-        print()
-        print("--- Related Commands ---")
-        print("`--model-default 'model-name'` to set default model")
-        print("`--history-clear` to clear your history")
+        print("============")
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -238,7 +339,7 @@ def handle_history_clear() -> None:
         history = config.load_model_history()
 
         if not history:
-            print("Model history is already empty.")
+            print("History is already empty.")
             return
 
         # Ask user for confirmation
@@ -246,78 +347,117 @@ def handle_history_clear() -> None:
 
         if response in ('y', 'yes'):
             config.clear_model_history()
-            print("✓ Model history cleared.")
+            print("History cleared.")
         else:
-            print("Model history not cleared.")
+            print("History not cleared.")
 
     except KeyboardInterrupt:
-        print("\nOperation cancelled.")
+        print("Operation cancelled.")
         sys.exit(1)
-    except Exception as e:
+    except (EOFError, OSError, RuntimeError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
+
+
+def _resolve_selected_model(model: Optional[str]) -> str:
+    """Resolve the selected model using CLI argument or default config."""
+    return model if model else config.get_default_model()
+
+
+def _validate_model_or_exit(registry, model: str) -> None:
+    """Validate a model via the registry or exit with an error."""
+    if not registry.validate_model(model):
+        print(f"Invalid model: {model}.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _google_auth_guidance() -> None:
+    """Print standard Google auth guidance block to stderr."""
+    print("Google auth setup required for Gemini (takes 3 mins):", file=sys.stderr)
+    print("  https://github.com/igoakulov/tokker/blob/main/tokker/google-auth-guide.md", file=sys.stderr)
+    print("-----------", file=sys.stderr)
+    print("Alternatively, sign in via browser:", file=sys.stderr)
+    print("  1. Install this: https://cloud.google.com/sdk/docs/install", file=sys.stderr)
+    print("  2. Run this command:", file=sys.stderr)
+    print("     gcloud auth application-default login", file=sys.stderr)
+
+
+def _handle_google_error(registry, model: str, original_error: Exception) -> None:
+    """Handle provider-specific Google errors with ADC/gcloud fallback."""
+    try:
+        provider_name = registry.get_model(model).library_name
+    except Exception:
+        provider_name = None
+
+    if provider_name != "Google":
+        raise original_error
+
+    import os
+    import shutil
+
+    adc_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if adc_path:
+        if not os.path.isfile(adc_path):
+            print(f"GOOGLE_APPLICATION_CREDENTIALS points to a missing file: {adc_path}", file=sys.stderr)
+            _google_auth_guidance()
+            sys.exit(1)
+        # ADC file exists; surface original Google error
+        print(str(original_error), file=sys.stderr)
+        sys.exit(1)
+
+    gcloud_path = shutil.which("gcloud")
+    if gcloud_path:
+        print("Attempting browser sign-in via gcloud (Application Default Credentials)...", file=sys.stderr)
+        try:
+            import subprocess
+            proc = subprocess.run(
+                [gcloud_path, "auth", "application-default", "login"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if proc.stdout:
+                print(proc.stdout, file=sys.stderr, end="")
+            if proc.stderr:
+                print(proc.stderr, file=sys.stderr, end="")
+        except Exception as ge:
+            print(f"gcloud sign-in attempt failed: {ge}", file=sys.stderr)
+        sys.exit(1)
+
+    _google_auth_guidance()
+    sys.exit(1)
+
+
+def _perform_tokenization(registry, text: str, model: str) -> Dict[str, Any]:
+    """Perform tokenization with the registry and handle Google-specific errors."""
+    try:
+        return registry.tokenize(text, model)
+    except Exception as err:
+        _handle_google_error(registry, model, err)
+        # _handle_google_error always exits for Google errors; re-raise otherwise
+        raise
 
 
 def handle_tokenize(text: str, model: Optional[str], output_format: str) -> None:
     """Handle tokenizing text with the specified or default model."""
     try:
-        # Determine which model to use
-        if model:
-            selected_model = model
-        else:
-            selected_model = config.get_default_model()
-
-        # Use registry system for tokenization
+        selected_model = _resolve_selected_model(model)
         registry = get_registry()
+        _validate_model_or_exit(registry, selected_model)
 
-        # Validate model using registry
-        if not registry.validate_model(selected_model):
-            raise ValueError(
-                f"Invalid model: {selected_model}. "
-                "Use `tok --models` to see all available models."
-            )
-
-        # Perform tokenization using registry
-        tokenization_result = registry.tokenize(text, selected_model)
+        tokenization_result = _perform_tokenization(registry, text, selected_model)
 
         # Track model usage in history
         config.add_model_to_history(selected_model)
 
-        # Convert to legacy format for backward compatibility
+        # Build CLI output structure from base result
         delimiter = config.get_delimiter()
-        token_strings = tokenization_result['token_strings']
+        result = _build_cli_output_structure(tokenization_result, text, delimiter)
 
-        # Create pivot dictionary for token frequency analysis
-        pivot = {}
-        for token_text in token_strings:
-            if token_text:
-                pivot[token_text] = pivot.get(token_text, 0) + 1
+        # Format and display output (keep script-friendly: no leading separator)
+        _format_and_print_output(result, output_format, delimiter)
 
-        # Build result in legacy format
-        result = {
-            "converted": delimiter.join(token_strings),
-            "token_strings": token_strings,
-            "token_ids": tokenization_result['token_ids'],
-            "token_count": tokenization_result['token_count'],
-            "word_count": count_words(text),
-            "char_count": len(text),
-            "pivot": pivot,
-            "model": tokenization_result['model'],
-            "provider": tokenization_result['provider']  # Provider field from registry
-        }
-
-        # Format and display output
-        if output_format == "json":
-            print(format_json_output(result))
-        elif output_format == "plain":
-            delimiter = config.get_delimiter()
-            plain_output = format_plain_output(result, delimiter)
-            print(plain_output)
-        elif output_format == "count":
-            count_summary = format_summary_output(result)
-            print(format_json_output(count_summary))
-
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 

@@ -37,21 +37,6 @@ class TiktokenModel(BaseModel):
             "r50k_base"
         ]
 
-    @property
-    def model_descriptions(self) -> Dict[str, str]:
-        """Return descriptions for each supported model.
-
-        DEPRECATED: This property is deprecated. Use static text in CLI output instead.
-        Kept for backward compatibility only.
-        """
-        return {
-            "o200k_base": "BPE, used by GPT-4o, o-family (o1, o3, o4)",
-            "cl100k_base": "BPE, used by GPT-3.5, GPT-4",
-            "p50k_base": "BPE, used by GPT-3.5",
-            "p50k_edit": "BPE, used by GPT-3 edit models for text and code (text-davinci, code-davinci)",
-            "r50k_base": "BPE, used by GPT-3 base models (davinci, curie, babbage, ada)"
-        }
-
     def _get_encoding(self, model_name: str):
         """
         Get tiktoken encoding by name.

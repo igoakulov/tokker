@@ -55,7 +55,11 @@ class ModelRegistry:
             try:
                 # Import the module
                 module_name = f'tokker.models.{name}'
-                module = importlib.import_module(module_name)
+                try:
+                    module = importlib.import_module(module_name)
+                except Exception as e:
+                    logger.warning(f"Failed to import model provider module {module_name}: {e}")
+                    continue
 
                 # Find model classes in the module
                 for attr_name in dir(module):
@@ -68,11 +72,15 @@ class ModelRegistry:
 
                         try:
                             # Instantiate and register the model
-                            model_instance = attr()
+                            try:
+                                model_instance = attr()
+                            except Exception as e:
+                                logger.warning(f"Failed to instantiate model provider {attr_name} from {module_name}: {e}")
+                                continue
                             self._register_model(model_instance)
                             logger.debug(f"Registered model provider: {attr_name} from {module_name}")
                         except Exception as e:
-                            logger.warning(f"Failed to instantiate model provider {attr_name}: {e}")
+                            logger.warning(f"Error while registering model provider {attr_name} from {module_name}: {e}")
 
             except ImportError as e:
                 logger.warning(f"Failed to import model provider module {name}: {e}")

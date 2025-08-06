@@ -38,7 +38,7 @@ def run_command(cmd: List[str]) -> tuple[int, str, str]:
 
 def _has_tiktoken() -> bool:
     try:
-        import tiktoken as _tiktoken  # type: ignore  # noqa: F401
+        import tiktoken as _tiktoken  # type: ignore  # noqa
         return True
     except Exception:
         return False
@@ -46,7 +46,7 @@ def _has_tiktoken() -> bool:
 
 def _has_transformers() -> bool:
     try:
-        import transformers as _transformers  # type: ignore  # noqa: F401
+        import transformers as _transformers  # type: ignore  # noqa
         return True
     except Exception:
         return False

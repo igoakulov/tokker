@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 # Apply centralized runtime/environment setup early
-import tokker.runtime as _tokker_runtime  # noqa: F401  # Ensure Transformers logging is configured before CLI loads
+import tokker.runtime as _tokker_runtime # noqa
 
 from tokker.cli.tokenize import main as cli_main
 

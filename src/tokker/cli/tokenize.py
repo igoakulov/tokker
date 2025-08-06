@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import sys
-import tokker.runtime as _tokker_runtime  # noqa: F401  # Ensure Transformers logging is configured early
+import tokker.runtime as _tokker_runtime  # noqa
 from tokker.cli.arguments import build_argument_parser
 from tokker.cli.commands.list_models import run_list_models
 from tokker.cli.commands.set_default_model import run_set_default_model

@@ -117,12 +117,6 @@ $RECYCLE.BIN/
 # Linux backups
 *~
 
-# Project-specific: keep tests in VCS (excluded from sdist via MANIFEST.in)
-
-# Documentation drafts
-*-docs/
-docs-*/
-
 # Temporary files
 *.tmp
 *.temp

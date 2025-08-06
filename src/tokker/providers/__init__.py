@@ -15,18 +15,18 @@ def register_provider(cls: type[Provider]) -> type[Provider]:
 # This avoids dynamic filesystem scanning while keeping behavior explicit.
 # If a provider has optional dependencies, it should handle ImportError internally.
 try:
-    from . import tiktoken as _tiktoken_provider  # noqa: F401
+    from . import tiktoken as _tiktoken_provider  # noqa
 except Exception:
     # Optional dependency may not be installed; skip silent import failure
     pass
 
 try:
-    from . import huggingface as _huggingface_provider  # noqa: F401
+    from . import huggingface as _huggingface_provider  # noqa
 except Exception:
     pass
 
 try:
-    from . import google as _google_provider  # noqa: F401
+    from . import google as _google_provider  # noqa
 except Exception:
     pass
 

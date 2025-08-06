@@ -49,10 +49,6 @@ prune *.egg-info
 prune .vscode
 prune .idea
 
-# Exclude documentation drafts
-global-exclude *-docs/*
-global-exclude docs-*/*
-
 # Exclude temporary and editor swap files
 global-exclude *.tmp
 global-exclude *.temp

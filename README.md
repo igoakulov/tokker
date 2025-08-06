@@ -1,7 +1,6 @@
 # Tokker
 
-Tokker is a fast local-first CLI tool for tokenizing text with all the best models in one place.
-
+Tokker: a fast local-first CLI tokenizer with all the best models in one place.
 ---
 
 ## Features
@@ -12,10 +11,8 @@ Tokker is a fast local-first CLI tool for tokenizing text with all the best mode
   - Google: the entire Gemini family
   - HuggingFace: select literally [any model](https://huggingface.co/models?library=transformers) that supports `transformers` library
 - **Flexible Output**: JSON, plain text, count, and pivot output formats
-- **Model History**: Track your usage with `--history` and `--history-clear`
-- **Configuration**: Persistent configuration for default model and settings
 - **Text Analysis**: Token count, word count, character count, and token frequency
-- **Cross-platform**: Works on Windows, macOS, and Linux
+- **Model History**: Track your usage with `--history` and `--history-clear`
 - **Local-first**: Works locally on device (except Google)
 
 ---
@@ -23,11 +20,15 @@ Tokker is a fast local-first CLI tool for tokenizing text with all the best mode
 ## Installation
 
 ```bash
+# Install tokker without model provider packages (optional)
 pip install tokker
+
+# Install at least one model provider package:
+pip install 'tokker[all]' # for all models at once
+pip install 'tokker[tiktoken]' # for models from OpenAI
+pip install 'tokker[google-genai]' # for models from Google
+pip install 'tokker[transformers]' # for models from HuggingFace
 ```
-
-That's it! The `tok` command is now available in your terminal.
-
 ---
 
 ## Command Reference
@@ -46,8 +47,8 @@ options:
   -m, --model MODEL                       model to use (overrides default)
   -o, --output {json,plain,count,pivot}   output format (default: json)
   -D, --model-default MODEL_DEFAULT       set default model
-  -M, --models                            list all available models
-  -H, --history                           show history of used models
+  -M, --models                            list all models
+  -H, --history                           show history
   -X, --history-clear                     clear history
 ```
 
@@ -55,7 +56,7 @@ options:
 
 ### Tokenize Text
 
-Tip: When using `bash` or `zsh`, wrap input text in single quotes ('like this'). Double quotes cause issues with special characters such as `!` (used for history expansion).
+When using `bash` or `zsh`, wrap input text in **single** quotes ('like this') to avoid conflicts with special characters like `!`.
 
 ```bash
 # Tokenize with default model
@@ -65,7 +66,7 @@ tok 'Hello world'
 tok 'Hello world' -o plain
 
 # Use a specific model
-tok 'Hello world' -m deepseek-ai/DeepSeek-R1
+tok 'Hello world' -m openai/gpt-oss-120b
 
 # Get just the counts
 tok 'Hello world' -m gemini-2.5-pro -o count
@@ -75,13 +76,13 @@ tok 'Hello world' -m gemini-2.5-pro -o count
 
 ```bash
 # Process files
-cat document.txt | tok -m gpt2 -o count
+cat document.txt | tok -m deepseek-ai/DeepSeek-R1 -o count
 
 # Chain with other tools
 curl -s https://example.com | tok -m bert-base-uncased
 
 # Compare models
-echo "Machine learning is awesome" | tok -m gpt2
+echo "Machine learning is awesome" | tok -m openai/gpt-oss-120b
 echo "Machine learning is awesome" | tok -m bert-base-uncased
 ```
 
@@ -94,24 +95,25 @@ tok -M
 
 Output:
 ```
+(.venv) igo@igo-mac tokker % tok -M
 ============
 OpenAI:
 
-  cl100k_base           used in GPT-3.5 (late), GPT-4
-  o200k_base            used in GPT-4o, o-family (o1, o3, o4)
-  p50k_base             used in GPT-3.5 (early)
-  p50k_edit             used in GPT-3 edit models (text-davinci, code-davinci)
-  r50k_base             used in GPT-3 base models (davinci, curie, babbage, ada)
+  cl100k_baseused in GPT-3.5 (late), GPT-4
+  o200k_baseused in GPT-4o, o-family (o1, o3, o4)
+  p50k_baseused in GPT-3.5 (early)
+  p50k_editused in GPT-3 edit models (text-davinci, code-davinci)
+  r50k_baseused in GPT-3 base models (davinci, curie, babbage, ada)
 ------------
 Google:
 
-  gemini-2.5-pro
-  gemini-2.5-flash
-  gemini-2.5-flash-lite
   gemini-2.0-flash
   gemini-2.0-flash-lite
+  gemini-2.5-flash
+  gemini-2.5-flash-lite
+  gemini-2.5-pro
 
-Auth setup required   ->   https://github.com/igoakulov/tokker/blob/main/tokker/google-auth-guide.md
+Auth setup required   ->   https://github.com/igoakulov/tokker/blob/main/google-auth-guide.md
 ------------
 HuggingFace (BYOM - Bring You Own Model):
 
@@ -126,6 +128,7 @@ HuggingFace (BYOM - Bring You Own Model):
   mistralai/Devstral-Small-2507
   moonshotai/Kimi-K2-Instruct
   Qwen/Qwen3-Coder-480B-A35B-Instruct
+  openai/gpt-oss-120b
 ============
 ```
 
@@ -156,9 +159,9 @@ History is stored locally in `~/.config/tokker/history.json`.
 ### Full JSON Output (Default)
 
 ```bash
-$ tok 'Hello world'
+tok 'Hello world'
 {
-  "converted": "Hello⎮ world",
+  "delimited_text": "Hello⎮ world",
   "token_strings": ["Hello", " world"],
   "token_ids": [24912, 2375],
   "token_count": 2,
@@ -170,14 +173,14 @@ $ tok 'Hello world'
 ### Plain Text Output
 
 ```bash
-$ tok 'Hello world' -o plain
+tok 'Hello world' -o plain
 Hello⎮ world
 ```
 
 ### Count Output
 
 ```bash
-$ tok 'Hello world' -o count
+tok 'Hello world' -o count
 {
   "token_count": 2,
   "word_count": 2,
@@ -191,7 +194,7 @@ The pivot output prints a JSON object with token frequencies, sorted by highest 
 
 Example:
 ```bash
-$ tok 'never gonna give you up neve gonna let you down' -m cl100k_base -o pivot
+tok 'never gonna give you up neve gonna let you down' -m cl100k_base -o pivot
 {
   " gonna": 2,
   " you": 2,

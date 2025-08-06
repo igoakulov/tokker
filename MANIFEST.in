@@ -4,22 +4,24 @@
 include README.md
 include LICENSE
 include pyproject.toml
+include google-auth-guide.md
 
-# Exclude requirements.txt (dependencies are in pyproject.toml)
-exclude requirements.txt
-
-# Include the main package
-recursive-include tokker *.py
-
-# Include documentation files needed at runtime (guides and markdown)
-recursive-include tokker *.md
+# Include the main package from src/ layout
+recursive-include src/tokker *.py
+recursive-include src/tokker *.md
 
 # Exclude tests from the sdist
-prune tokker/tests
+prune tests
 
 # Exclude development and build artifacts
 exclude .gitignore
 exclude Makefile
+# Additional packaging artifact directories (rarely present in repo, exclude if they appear)
+prune downloads
+prune wheels
+prune sdist
+prune pip-wheel-metadata
+prune share/python-wheels
 
 # Exclude hidden files and directories / caches
 global-exclude __pycache__/*

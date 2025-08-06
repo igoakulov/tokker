@@ -117,9 +117,7 @@ $RECYCLE.BIN/
 # Linux backups
 *~
 
-# Project-specific: development and testing files (not for sdist)
-tests/
-Makefile
+# Project-specific: keep tests in VCS (excluded from sdist via MANIFEST.in)
 
 # Documentation drafts
 *-docs/

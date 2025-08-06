@@ -1,10 +1,7 @@
-# Core dependencies for tokker CLI tool
-tiktoken>=0.5.0
-transformers>=4.40.0
-
-# Development dependencies (optional)
-pytest>=7.0.0
-pytest-cov>=4.0.0
-black>=22.0.0
-flake8>=5.0.0
-mypy>=1.0.0
+# Runtime dependencies
+# Note: Provider integrations are optional extras defined in pyproject.toml
+# Install with extras, for example:
+#   pip install "tokker[tiktoken]"
+#   pip install "tokker[hf]"
+#   pip install "tokker[google]"
+#   pip install "tokker[all]"

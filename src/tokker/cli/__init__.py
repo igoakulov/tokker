@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""
-CLI module for Tokker.
-
-Provides the command-line interface for tokenization operations.
-"""
-
 from .tokenize import main
 
 def main_entry():

@@ -5,9 +5,6 @@ from enum import Enum
 SEP_MAIN = "============"
 SEP_SUB = "------------"
 
-HDR_OPENAI = "OpenAI:\n"
-HDR_GOOGLE = "Google:\n"
-HDR_HF_BYOM = "HuggingFace (BYOM - Bring You Own Model):\n"
 HDR_HISTORY = "History:\n"
 
 # ---- Links and guidance ----
@@ -17,21 +14,16 @@ MSG_AUTH_REQUIRED = f"\nAuth setup required   ->   {GOOGLE_AUTH_GUIDE}"
 # Centralized Google auth guidance (used by __main__.py)
 MSG_GOOGLE_AUTH_HEADER = "Google auth setup required for Gemini (takes ~3 mins):"
 # This line keeps the URL centralized and formatted
-MSG_GOOGLE_AUTH_GUIDE_LINE = f"  {GOOGLE_AUTH_GUIDE}"
-# Multi-line guidance steps (printed line by line)
-MSG_GOOGLE_AUTH_STEPS = [
-    "-----------",
-    "Alternatively, sign in via browser:",
-    "  1. Install this: https://cloud.google.com/sdk/docs/install",
-    "  2. Run this command:",
-    "     gcloud auth application-default login",
-]
+MSG_GOOGLE_AUTH_GUIDE_URL = f"  {GOOGLE_AUTH_GUIDE}"
 
 # ---- Messages ----
-MSG_INVALID_MODEL = "Invalid model: {model}."
 MSG_DEFAULT_SET = "Default model set to: {model}"
 MSG_DEFAULT_SET_PROVIDER = "Default model set to: {model} ({provider})"
 MSG_CONFIG_SAVED_TO = "Configuration saved to: {path}"
+# Provider-aware validation message for -D/--model-default when unresolved
+MSG_DEFAULT_MODEL_UNSUPPORTED_FMT = (
+    "Model '{model}' not found with installed providers: {providers}."
+)
 
 MSG_HISTORY_EMPTY = "History empty.\n"
 MSG_HISTORY_CLEARED = "History cleared."
@@ -44,17 +36,19 @@ MSG_UNKNOWN_OUTPUT_FORMAT_FMT = (
 
 # CLI/global error and hint messages (for __main__.py mapping)
 # Unknown/invalid model hints
-MSG_MODEL_NOT_FOUND_FMT = "Model '{model}' not found."
-MSG_HINT_LIST_MODELS = "Run 'tok -M' to list available models."
+MSG_DEP_HINT_HEADING = "Install model providers:"
 
-# Dependency hints (unified)
-MSG_DEP_HINT_FMT = (
-    "Package '{package}' is not installed. Install model provider packages:\n"
-    "  pip install 'tokker[all]'\n"
-    "  pip install 'tokker[tiktoken]'            - OpenAI\n"
-    "  pip install 'tokker[google-genai]'        - Google\n"
-    "  pip install 'tokker[transformers]'        - HuggingFace"
-)
+# Install commands
+CMD_INSTALL_ALL = "pip install 'tokker[all]'"
+CMD_INSTALL_TIKTOKEN = "pip install 'tokker[tiktoken]'"
+CMD_INSTALL_GOOGLE = "pip install 'tokker[google-genai]'"
+CMD_INSTALL_TRANSFORMERS = "pip install 'tokker[transformers]'"
+
+# Human-readable hint lines, built from commands
+MSG_DEP_HINT_ALL = f"  {CMD_INSTALL_ALL}                 - all at once"
+MSG_DEP_HINT_TIKTOKEN = f"  {CMD_INSTALL_TIKTOKEN}            - OpenAI"
+MSG_DEP_HINT_GOOGLE = f"  {CMD_INSTALL_GOOGLE}        - Google"
+MSG_DEP_HINT_TRANSFORMERS = f"  {CMD_INSTALL_TRANSFORMERS}        - HuggingFace"
 
 # Config/FS and generic error formats
 MSG_FILESYSTEM_ERROR_FMT = "Filesystem error: {err}"
@@ -70,23 +64,23 @@ BYOM_INSTRUCTIONS = [
 
 # ---- OpenAI tokenizer descriptions ----
 OPENAI_DESCRIPTIONS = {
-    "cl100k_base": "used in GPT-3.5 (late), GPT-4",
-    "o200k_base": "used in GPT-4o, o-family (o1, o3, o4)",
-    "p50k_base": "used in GPT-3.5 (early)",
-    "p50k_edit": "used in GPT-3 edit models (text-davinci, code-davinci)",
-    "r50k_base": "used in GPT-3 base models (davinci, curie, babbage, ada)",
+    "o200k_base": "- for GPT-4o, o-family (o1, o3, o4)",
+    "cl100k_base": "- for GPT-3.5 (late), GPT-4",
+    "p50k_base": "- for GPT-3.5 (early)",
+    "p50k_edit": "- for GPT-3 edit models (text-davinci, code-davinci)",
+    "r50k_base": "- for GPT-3 base models (davinci, curie, babbage, ada)",
 }
 
 # ---- Example HuggingFace models for BYOM ----
 BYOM_EXAMPLE_MODELS = [
+    "openai/gpt-oss-120b",
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+    "moonshotai/Kimi-K2-Instruct",
     "deepseek-ai/DeepSeek-R1",
-    "google-bert/bert-base-uncased",
     "google/gemma-3n-E4B-it",
+    "google-bert/bert-base-uncased",
     "meta-llama/Meta-Llama-3.1-405B",
     "mistralai/Devstral-Small-2507",
-    "moonshotai/Kimi-K2-Instruct",
-    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-    "openai/gpt-oss-120b",
 ]
 
 

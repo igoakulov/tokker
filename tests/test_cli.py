@@ -17,6 +17,16 @@ from tokker.cli.commands.tokenize_text import run_tokenize
 from tokker import messages as msg
 
 
+def _assert_json_has_keys(data: dict, keys: set[str]) -> None:
+    missing = keys - set(data.keys())
+    assert not missing, f"Missing JSON keys: {', '.join(sorted(missing))}"
+
+
+def _assert_json_equals_keys(data: dict, keys: set[str]) -> None:
+    actual = set(data.keys())
+    assert actual == keys, f"JSON keys mismatch. Expected {keys}, got {actual}"
+
+
 class TestCLIParser(unittest.TestCase):
     """Test cases for CLI argument parsing."""
 
@@ -108,7 +118,7 @@ class TestListModelsCommand(unittest.TestCase):
         printed = "\n".join(
             call.args[0] for call in mock_print.call_args_list if call.args
         )
-        self.assertIn("Google:", printed)
+        self.assertIn("Google", printed)
         self.assertIn(msg.MSG_AUTH_REQUIRED.strip(), printed)
 
 
@@ -130,6 +140,9 @@ class TestSetDefaultModelCommand(unittest.TestCase):
 
         # Mock config
         mock_config.config_file = "/path/to/config.json"
+
+        # Ensure provider mock has a NAME attribute to match output format
+        mock_registry.get_provider.return_value = Mock(NAME="OpenAI")
 
         # Call function
         run_set_default_model("cl100k_base")
@@ -176,6 +189,22 @@ class TestTokenizeCommand(unittest.TestCase):
         # Verify tokenization and printing
         mock_registry.tokenize.assert_called_once_with("Hello world", "gpt2")
         self.assertTrue(mock_print.called)
+        # Ensure JSON shape contains required keys
+        printed = "".join(
+            call.args[0] for call in mock_print.call_args_list if call.args
+        )
+        data = json.loads(printed)
+        _assert_json_has_keys(
+            data,
+            {
+                "delimited_text",
+                "token_strings",
+                "token_ids",
+                "token_count",
+                "word_count",
+                "char_count",
+            },
+        )
 
     @patch("tokker.cli.commands.tokenize_text.ModelRegistry")
     @patch("tokker.cli.commands.tokenize_text.config")
@@ -259,7 +288,7 @@ class TestTokenizeCommand(unittest.TestCase):
         format_and_print_output(result, "count", "⎮")
         out = "".join(c.args[0] for c in mock_print.call_args_list if c.args)
         data = json.loads(out)
-        self.assertEqual(set(data.keys()), {"token_count", "word_count", "char_count"})
+        _assert_json_equals_keys(data, {"token_count", "word_count", "char_count"})
 
 
 class TestMainFunction(unittest.TestCase):
@@ -339,14 +368,17 @@ class TestGoogleAuthMapping(unittest.TestCase):
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
+            patch(
+                "tokker.error_handler.get_installed_providers", return_value={"Google"}
+            ),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
             self.assertEqual(stdout_buf.getvalue(), "")
             expected_lines = [
                 msg.MSG_GOOGLE_AUTH_HEADER,
-                msg.MSG_GOOGLE_AUTH_GUIDE_LINE,
-            ] + list(msg.MSG_GOOGLE_AUTH_STEPS)
+                msg.MSG_GOOGLE_AUTH_GUIDE_URL,
+            ]
             expected = "\n".join(expected_lines) + "\n"
             self.assertEqual(stderr_buf.getvalue(), expected)
 
@@ -360,14 +392,17 @@ class TestGoogleAuthMapping(unittest.TestCase):
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
+            patch(
+                "tokker.error_handler.get_installed_providers", return_value={"Google"}
+            ),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
             self.assertEqual(stdout_buf.getvalue(), "")
             expected_lines = [
                 msg.MSG_GOOGLE_AUTH_HEADER,
-                msg.MSG_GOOGLE_AUTH_GUIDE_LINE,
-            ] + list(msg.MSG_GOOGLE_AUTH_STEPS)
+                msg.MSG_GOOGLE_AUTH_GUIDE_URL,
+            ]
             expected = "\n".join(expected_lines) + "\n"
             self.assertEqual(stderr_buf.getvalue(), expected)
 
@@ -383,14 +418,17 @@ class TestGoogleAuthMapping(unittest.TestCase):
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
+            patch(
+                "tokker.error_handler.get_installed_providers", return_value={"Google"}
+            ),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
             self.assertEqual(stdout_buf.getvalue(), "")
             expected_lines = [
                 msg.MSG_GOOGLE_AUTH_HEADER,
-                msg.MSG_GOOGLE_AUTH_GUIDE_LINE,
-            ] + list(msg.MSG_GOOGLE_AUTH_STEPS)
+                msg.MSG_GOOGLE_AUTH_GUIDE_URL,
+            ]
             expected = "\n".join(expected_lines) + "\n"
             self.assertEqual(stderr_buf.getvalue(), expected)
 

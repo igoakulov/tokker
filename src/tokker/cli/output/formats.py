@@ -38,10 +38,12 @@ def _handle_json(result: dict[str, Any]) -> None:
         "char_count": result.get("char_count", 0),
     }
     print(_format_json_output(json_result))
+    pass
 
 
 def _handle_plain(result: dict[str, Any], delimiter: str) -> None:
     print(_format_plain_output(result, delimiter))
+    pass
 
 
 def _handle_count(result: dict[str, Any]) -> None:
@@ -51,6 +53,7 @@ def _handle_count(result: dict[str, Any]) -> None:
         "char_count": result.get("char_count", 0),
     }
     print(_format_json_output(count_summary))
+    pass
 
 
 def _handle_pivot(result: dict[str, Any]) -> None:
@@ -59,6 +62,7 @@ def _handle_pivot(result: dict[str, Any]) -> None:
     items = sorted(pivot.items(), key=lambda kv: (-kv[1], kv[0]))
     table_obj = {k: v for k, v in items}
     print(_format_json_output(table_obj))
+    pass
 
 
 # ---- Low-level formatters ----

@@ -19,7 +19,7 @@ keywords = [
 ]
 
 name = "tokker"
-version = "0.3.6"
+version = "0.3.7"
 description = "Tokker: a fast local-first CLI tokenizer with all the best models in one place"
 authors = [{ name = "igoakulov", email = "igoruphere@gmail.com" }]
 readme = "README.md"
@@ -51,7 +51,7 @@ Issues = "https://github.com/igoakulov/tokker/issues"
 Documentation = "https://github.com/igoakulov/tokker#readme"
 
 [project.scripts]
-tok = "tokker.cli.tokenize:main"
+tok = "tokker.__main__:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

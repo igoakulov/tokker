@@ -5,6 +5,27 @@ from io import StringIO
 from tokker import messages as msg
 
 
+def _expected_model_not_found_with_hints(model: str, providers_str: str = "none") -> str:
+    return (
+        msg.MSG_DEFAULT_MODEL_UNSUPPORTED_FMT.format(model=model, providers=providers_str)
+        + "\n"
+        + msg.MSG_DEP_HINT_HEADING
+        + "\n"
+        + msg.MSG_DEP_HINT_ALL
+        + "\n"
+        + msg.MSG_DEP_HINT_TIKTOKEN
+        + "\n"
+        + msg.MSG_DEP_HINT_GOOGLE
+        + "\n"
+        + msg.MSG_DEP_HINT_TRANSFORMERS
+        + "\n"
+    )
+
+
+
+
+
+
 class TestMainModule(unittest.TestCase):
     def test_main_successful_dispatch_returns_zero(self):
         # Patch tokenize.main where it's imported into __main__, and ensure argv triggers dispatch
@@ -84,14 +105,17 @@ class TestMainErrorMapping(unittest.TestCase):
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
+            patch(
+                "tokker.error_handler.get_installed_providers", return_value={"Google"}
+            ),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
             self.assertEqual(stdout_buf.getvalue(), "")
             expected_lines = [
                 msg.MSG_GOOGLE_AUTH_HEADER,
-                msg.MSG_GOOGLE_AUTH_GUIDE_LINE,
-            ] + list(msg.MSG_GOOGLE_AUTH_STEPS)
+                msg.MSG_GOOGLE_AUTH_GUIDE_URL,
+            ]
             expected = "\n".join(expected_lines) + "\n"
             self.assertEqual(stderr_buf.getvalue(), expected)
 
@@ -105,18 +129,19 @@ class TestMainErrorMapping(unittest.TestCase):
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
+            patch(
+                "tokker.error_handler.get_installed_providers", return_value={"Google"}
+            ),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
             self.assertEqual(stdout_buf.getvalue(), "")
-            # Expect the generic list-models hint first (non-Google model arg), then guidance block
-            expected_hint = msg.MSG_HINT_LIST_MODELS + "\n"
+            # Expect only the Google guidance block
             expected_lines = [
                 msg.MSG_GOOGLE_AUTH_HEADER,
-                msg.MSG_GOOGLE_AUTH_GUIDE_LINE,
-            ] + list(msg.MSG_GOOGLE_AUTH_STEPS)
-            expected_guidance = "\n".join(expected_lines) + "\n"
-            expected = expected_hint + expected_guidance
+                msg.MSG_GOOGLE_AUTH_GUIDE_URL,
+            ]
+            expected = "\n".join(expected_lines) + "\n"
             self.assertEqual(stderr_buf.getvalue(), expected)
 
     @patch("sys.argv", ["tok", "Hello", "--output", "bogus"])
@@ -144,21 +169,17 @@ class TestMainErrorMapping(unittest.TestCase):
         side_effect=RuntimeError("Model not found: not_a_real_model"),
     )
     def test_explicit_model_not_found_message_and_hint(self, _cli_main):
-        """When error text includes 'not found' and a model arg is present, print both message and hint."""
+        """When error text includes 'not found' and a model arg is present, print standardized message and hints."""
         main_module = self._import_main_fresh()
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
+            patch("tokker.error_handler.get_installed_providers", return_value=set()),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
             self.assertEqual(stdout_buf.getvalue(), "")
-            expected = (
-                msg.MSG_MODEL_NOT_FOUND_FMT.format(model="not_a_real_model")
-                + "\n"
-                + msg.MSG_HINT_LIST_MODELS
-                + "\n"
-            )
+            expected = _expected_model_not_found_with_hints("not_a_real_model", "none")
             self.assertEqual(stderr_buf.getvalue(), expected)
             self.assertNotIn("Traceback (most recent call last)", stderr_buf.getvalue())
 
@@ -172,11 +193,12 @@ class TestMainErrorMapping(unittest.TestCase):
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
+            patch("tokker.error_handler.get_installed_providers", return_value=set()),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
             self.assertEqual(stdout_buf.getvalue(), "")
-            expected = msg.MSG_DEP_HINT_FMT.format(package="tiktoken") + "\n"
+            expected = _expected_model_not_found_with_hints("something", "none")
             self.assertEqual(stderr_buf.getvalue(), expected)
 
     @patch("sys.argv", ["tok", "Hello", "--model", "something"])
@@ -189,11 +211,12 @@ class TestMainErrorMapping(unittest.TestCase):
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
+            patch("tokker.error_handler.get_installed_providers", return_value=set()),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
             self.assertEqual(stdout_buf.getvalue(), "")
-            expected = msg.MSG_DEP_HINT_FMT.format(package="transformers") + "\n"
+            expected = _expected_model_not_found_with_hints("something", "none")
             self.assertEqual(stderr_buf.getvalue(), expected)
 
     @patch("sys.argv", ["tok", "Hello", "--model", "something"])
@@ -206,11 +229,12 @@ class TestMainErrorMapping(unittest.TestCase):
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
+            patch("tokker.error_handler.get_installed_providers", return_value=set()),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
             self.assertEqual(stdout_buf.getvalue(), "")
-            expected = msg.MSG_DEP_HINT_FMT.format(package="google-genai") + "\n"
+            expected = _expected_model_not_found_with_hints("something", "none")
             self.assertEqual(stderr_buf.getvalue(), expected)
 
     @patch("sys.argv", ["tok", "Hello", "--model", "nonexistent-model"])
@@ -224,13 +248,8 @@ class TestMainErrorMapping(unittest.TestCase):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
             self.assertEqual(stdout_buf.getvalue(), "")
-            # Expect the generic list-models hint, followed by the fallback unexpected error line
-            expected = (
-                msg.MSG_HINT_LIST_MODELS
-                + "\n"
-                + msg.MSG_UNEXPECTED_ERROR_FMT.format(err="random failure")
-                + "\n"
-            )
+            # Expect only the fallback unexpected error line (no generic list-models hint anymore)
+            expected = msg.MSG_UNEXPECTED_ERROR_FMT.format(err="random failure") + "\n"
             self.assertEqual(stderr_buf.getvalue(), expected)
 
     @patch("sys.argv", ["tok", "Hello"])

@@ -20,8 +20,9 @@ def run_command(cmd: List[str]) -> tuple[int, str, str]:
     """Run a command and return exit code, stdout, stderr."""
     try:
         # Use local module instead of global tok command
+        # Route through tokker.__main__ for centralized error handling
         if cmd[0] == "tok":
-            cmd = [sys.executable, "-m", "tokker.cli.tokenize"] + cmd[1:]
+            cmd = [sys.executable, "-m", "tokker"] + cmd[1:]
 
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         return result.returncode, result.stdout, result.stderr
@@ -54,21 +55,21 @@ class SmokeTests(unittest.TestCase):
         """Test the --models command."""
         exit_code, stdout, stderr = run_command(["tok", "--models"])
         self.assertEqual(exit_code, 0, f"Models list failed: {stderr}")
-        self.assertIn("OpenAI:", stdout, "Models output missing OpenAI section")
-        self.assertIn("Google:", stdout, "Models output missing Google section")
+        # Headings are standardized; just ensure sections are present
+        self.assertIn("OpenAI", stdout, "Models output missing OpenAI section")
+        self.assertIn("Google", stdout, "Models output missing Google section")
         self.assertTrue(
             ("Auth setup required" in stdout and "google-auth-guide" in stdout)
             or ("Auth required" in stdout and "google-auth-guide" in stdout),
             "Google auth guide link missing",
         )
         self.assertIn(
-            "HuggingFace (BYOM - Bring You Own Model):",
-            stdout,
-            "Models output missing HuggingFace section",
+            "HuggingFace", stdout, "Models output missing HuggingFace section"
         )
-        openai_idx = stdout.index("OpenAI:")
-        google_idx = stdout.index("Google:")
-        hf_idx = stdout.index("HuggingFace (BYOM - Bring You Own Model):")
+        # Maintain provider order in output
+        openai_idx = stdout.index("OpenAI")
+        google_idx = stdout.index("Google")
+        hf_idx = stdout.index("HuggingFace")
         self.assertTrue(
             openai_idx < google_idx < hf_idx,
             "Providers not in expected order (OpenAI, Google, HuggingFace)",
@@ -212,9 +213,14 @@ class SmokeTests(unittest.TestCase):
         exit_code, stdout, stderr = run_command(
             ["tok", "--model-default", "nonexistent-model"]
         )
-        # Setting an unknown default model is allowed; validation happens at use-time
-        self.assertEqual(
-            exit_code, 0, f"Setting unknown default model should not fail: {stderr}"
+        # Now standardized: invalid default model triggers standardized error and non-zero exit
+        self.assertNotEqual(
+            exit_code,
+            0,
+            "Setting unknown default model should fail with standardized error",
+        )
+        self.assertIn(
+            "Model 'nonexistent-model' not found with installed providers:", stderr
         )
 
     @unittest.skipUnless(_has_tiktoken(), "Skipping: tiktoken extra not installed")

@@ -34,22 +34,42 @@ pip install 'tokker[transformers]' # for models from HuggingFace
 ## Command Reference
 
 ```
-usage: tok [-h] [-m MODEL] [-o {json,plain,count,pivot}]
-           [-D MODEL_DEFAULT] [-M]
+usage: tok [-h] [-m MODEL] [-o {json,plain,count,pivot}] [-D MODEL_DEFAULT] [-M]
            [-H] [-X]
            [text]
 
+Tokker: a fast local-first CLI tokenizer with all the best models in one place
+
 positional arguments:
-  text                                    text to tokenize (or read from stdin)
+  text                  text to tokenize (or read from stdin if not provided)
 
 options:
-  -h, --help                              show this help message and exit
-  -m, --model MODEL                       model to use (overrides default)
-  -o, --output {json,plain,count,pivot}   output format (default: json)
-  -D, --model-default MODEL_DEFAULT       set default model
-  -M, --models                            list all models
-  -H, --history                           show history
-  -X, --history-clear                     clear history
+  -h, --help            show this help message and exit
+  -m, --model MODEL     model to use (overrides default)
+  -o, --output {json,plain,count,pivot}
+                        output format (default: json)
+  -D, --model-default MODEL_DEFAULT
+                        set default model
+  -M, --models          list all models
+  -H, --history         show history of used models
+  -X, --history-clear   clear history
+
+============
+Examples:
+  echo 'Hello world' | tok
+  tok 'Hello world'
+  tok 'Hello world' -m deepseek-ai/DeepSeek-R1
+  tok 'Hello world' -m gemini-2.5-pro -o count
+  tok 'Hello world' -o pivot
+  tok -D cl100k_base
+============
+Install model providers:
+  pip install 'tokker[all]'                 - all at once
+  pip install 'tokker[tiktoken]'            - OpenAI
+  pip install 'tokker[transformers]'        - HuggingFace
+  pip install 'tokker[google-genai]'        - Google
+
+Google auth setup   →   https://github.com/igoakulov/tokker/blob/main/google-auth-guide.md
 ```
 
 ## Usage
@@ -95,40 +115,39 @@ tok -M
 
 Output:
 ```
-(.venv) igo@igo-mac tokker % tok -M
 ============
-OpenAI:
+OpenAI (installed)
 
-  cl100k_baseused in GPT-3.5 (late), GPT-4
-  o200k_baseused in GPT-4o, o-family (o1, o3, o4)
-  p50k_baseused in GPT-3.5 (early)
-  p50k_editused in GPT-3 edit models (text-davinci, code-davinci)
-  r50k_baseused in GPT-3 base models (davinci, curie, babbage, ada)
+  o200k_base            - for GPT-4o, o-family (o1, o3, o4)
+  cl100k_base           - for GPT-3.5 (late), GPT-4
+  p50k_base             - for GPT-3.5 (early)
+  p50k_edit             - for GPT-3 edit models (text-davinci, code-davinci)
+  r50k_base             - for GPT-3 base models (davinci, curie, babbage, ada)
 ------------
-Google:
+Google (installed)
 
-  gemini-2.0-flash
-  gemini-2.0-flash-lite
-  gemini-2.5-flash
-  gemini-2.5-flash-lite
   gemini-2.5-pro
+  gemini-2.5-flash-lite
+  gemini-2.5-flash
+  gemini-2.0-flash-lite
+  gemini-2.0-flash
 
 Auth setup required   ->   https://github.com/igoakulov/tokker/blob/main/google-auth-guide.md
 ------------
-HuggingFace (BYOM - Bring You Own Model):
+HuggingFace (installed)
 
   1. Go to   ->   https://huggingface.co/models?library=transformers
   2. Search any model with TRANSFORMERS library support
   3. Copy its `USER/MODEL` into your command like:
 
+  openai/gpt-oss-120b
+  Qwen/Qwen3-Coder-480B-A35B-Instruct
+  moonshotai/Kimi-K2-Instruct
   deepseek-ai/DeepSeek-R1
-  google-bert/bert-base-uncased
   google/gemma-3n-E4B-it
+  google-bert/bert-base-uncased
   meta-llama/Meta-Llama-3.1-405B
   mistralai/Devstral-Small-2507
-  moonshotai/Kimi-K2-Instruct
-  Qwen/Qwen3-Coder-480B-A35B-Instruct
-  openai/gpt-oss-120b
 ============
 ```
 

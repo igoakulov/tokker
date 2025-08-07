@@ -7,19 +7,21 @@ from tokker.models.registry import ModelRegistry
 
 
 def run_set_default_model(model: str) -> None:
-    """Set the default model and persist it to the config."""
-    registry = ModelRegistry()
-    available_models = registry.list_models()
-    model_info = next((m for m in available_models if m["name"] == model), None)
+    """Set the default model and persist it to the config.
 
-    # Persist selection (let any exceptions bubble to main)
+    Validation is performed by resolving a provider via ModelRegistry.get_provider(model).
+    Any exceptions raised during resolution are allowed to bubble to the centralized
+    error handler, which will render a provider-aware message.
+    """
+    registry = ModelRegistry()
+
+    # Validate by resolving the provider; let exceptions bubble to the centralized handler
+    provider = registry.get_provider(model)
+
+    # Persist selection on success
     config.set_default_model(model)
 
     # Display confirmation without tick/description; no blank lines
-    if model_info:
-        provider = model_info["provider"]
-        print(messages.MSG_DEFAULT_SET_PROVIDER.format(model=model, provider=provider))
-    else:
-        print(messages.MSG_DEFAULT_SET.format(model=model))
-
+    provider_name = getattr(provider, "NAME", None) or "Unknown"
+    print(messages.MSG_DEFAULT_SET_PROVIDER.format(model=model, provider=provider_name))
     print(messages.MSG_CONFIG_SAVED_TO.format(path=config.config_file))

@@ -18,6 +18,12 @@ Examples:
   tok 'Hello world' -o pivot
   tok -D cl100k_base
 {messages.SEP_MAIN}
+{messages.MSG_DEP_HINT_HEADING}
+{messages.MSG_DEP_HINT_ALL}
+{messages.MSG_DEP_HINT_TIKTOKEN}
+{messages.MSG_DEP_HINT_TRANSFORMERS}
+{messages.MSG_DEP_HINT_GOOGLE}
+
 Google auth setup   →   {messages.GOOGLE_AUTH_GUIDE}
         """,
     )

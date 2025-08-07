@@ -1,7 +1,8 @@
-from typing import Any
 import os
 import shutil
 import subprocess
+from typing import Any
+
 try:
     from google import genai  # type: ignore
     from google.genai.types import HttpOptions  # type: ignore
@@ -10,7 +11,8 @@ except Exception:
     HttpOptions = None  # type: ignore[assignment]
 
 from tokker.providers import Provider, register_provider
-from tokker.exceptions import ModelLoadError, TokenizationError, MissingDependencyError
+from tokker import messages
+
 
 @register_provider
 class ProviderGoogle(Provider):
@@ -32,13 +34,12 @@ class ProviderGoogle(Provider):
     ):
         self._client = client
 
-    def _get_client(self):   # Local helper
+    def _get_client(self):  # Local helper
         if self._client is not None:
             return self._client
 
         if genai is None or HttpOptions is None:
-            # Structured exception using centralized message templates
-            raise MissingDependencyError("google-genai", "tokker[google]")
+            raise messages.missing_dep_error("google.genai")
 
         project = (
             os.environ.get("GOOGLE_CLOUD_PROJECT")
@@ -64,21 +65,14 @@ class ProviderGoogle(Provider):
                 except Exception:
                     pass
 
-        try:
-            self._client = genai.Client(
-                vertexai=True,
-                project=project,
-                location=location,
-                http_options=HttpOptions(api_version="v1"),
-            )
-            return self._client
-        except Exception as e:
-            # If dependency is present but the client still fails due to missing pieces,
-            # present actionable guidance.
-            if "No module named" in str(e) or "ImportError" in str(e):
-                raise MissingDependencyError("google-genai", "tokker[google]") from e
-            # Use structured ModelLoadError with model/provider context in reason
-            raise ModelLoadError("Google", f"Failed to initialize Google client: {e}")
+        # Let any client construction errors bubble raw
+        self._client = genai.Client(
+            vertexai=True,
+            project=project,
+            location=location,
+            http_options=HttpOptions(api_version="v1"),
+        )
+        return self._client
 
     def tokenize(
         self,
@@ -86,38 +80,32 @@ class ProviderGoogle(Provider):
         model_name: str,
     ) -> dict[str, str | int | list[str] | list[int]]:
         client = self._get_client()
-        try:
-            response = client.models.compute_tokens(
-                model=model_name,
-                contents=text,
-            )
+        response = client.models.compute_tokens(
+            model=model_name,
+            contents=text,
+        )
 
-            token_ids: list[int] = []
-            token_strings: list[str] = []
+        token_ids: list[int] = []
+        token_strings: list[str] = []
 
-            tokens_info = getattr(response, "tokens_info", None)
-            if not tokens_info:
-                # Use structured TokenizationError with model context
-                raise TokenizationError(model_name, "Google compute_tokens returned no tokens_info. Ensure text is non-empty and credentials are configured.")
+        tokens_info = getattr(response, "tokens_info", None)
+        if not tokens_info:
+            # Allow downstream handling to decide how to message empty tokens
+            raise RuntimeError("Google compute_tokens returned no tokens_info")
 
-            for info in tokens_info:
-                token_ids.extend(getattr(info, "token_ids", []) or [])
-                for t in (getattr(info, "tokens", []) or []):
-                    if isinstance(t, bytes):
-                        try:
-                            token_strings.append(t.decode("utf-8", errors="replace"))
-                        except Exception:
-                            token_strings.append(str(t))
-                    else:
+        for info in tokens_info:
+            token_ids.extend(getattr(info, "token_ids", []) or [])
+            for t in getattr(info, "tokens", []) or []:
+                if isinstance(t, bytes):
+                    try:
+                        token_strings.append(t.decode("utf-8", errors="replace"))
+                    except Exception:
                         token_strings.append(str(t))
+                else:
+                    token_strings.append(str(t))
 
-            return {
-                "token_strings": token_strings,
-                "token_ids": token_ids,
-                "token_count": len(token_ids),
-            }
-        except TokenizationError:
-            raise
-        except Exception as e:
-            # Structured TokenizationError with model and underlying reason
-            raise TokenizationError(model_name, f"Google compute_tokens failed: {e}")
+        return {
+            "token_strings": token_strings,
+            "token_ids": token_ids,
+            "token_count": len(token_ids),
+        }

@@ -3,8 +3,9 @@ try:
 except Exception:
     tiktoken = None  # type: ignore[assignment]
 
+from tokker import messages
 from tokker.providers import Provider, register_provider
-from tokker.exceptions import ModelLoadError, MissingDependencyError
+
 
 @register_provider
 class ProviderTiktoken(Provider):
@@ -19,13 +20,9 @@ class ProviderTiktoken(Provider):
 
     def _get_encoding(self, model_name: str):
         if tiktoken is None:
-            # Use structured exception with centralized templates
-            raise MissingDependencyError("tiktoken", "tokker[tiktoken]")
-        try:
-            return tiktoken.get_encoding(model_name)
-        except Exception as e:
-            # Provide structured model/context info
-            raise ModelLoadError(model_name, f"Failed to load tiktoken encoding: {e}")
+            # Surface missing dependency with standardized message from messages.py
+            raise messages.missing_dep_error("tiktoken")
+        return tiktoken.get_encoding(model_name)
 
     def tokenize(
         self,

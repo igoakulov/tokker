@@ -4,11 +4,11 @@ Simple public API wrappers over ModelRegistry for programmatic use:
   from tokker import tokenize, count_tokens, count_words, count_characters,
                    list_models, get_providers
 """
-from typing import Any
+
 import re
+from typing import Any
 
 from tokker.models.registry import ModelRegistry
-from tokker.exceptions import ModelNotFoundError
 
 
 def tokenize(text: str, model: str) -> dict[str, Any]:
@@ -19,9 +19,6 @@ def tokenize(text: str, model: str) -> dict[str, Any]:
       - token_count: int
     """
     registry = ModelRegistry()
-    if not registry.is_model_supported(model):
-        # Use structured exception constructor for consistent messaging
-        raise ModelNotFoundError(model)
     return registry.tokenize(text, model)
 
 

@@ -19,7 +19,7 @@ keywords = [
 ]
 
 name = "tokker"
-version = "0.3.5"
+version = "0.3.6"
 description = "Tokker: a fast local-first CLI tokenizer with all the best models in one place"
 authors = [{ name = "igoakulov", email = "igoruphere@gmail.com" }]
 readme = "README.md"

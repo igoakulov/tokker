@@ -1,27 +1,16 @@
 #!/usr/bin/env python3
-import sys
-
-from tokker.cli import strings
-from tokker.cli.config import config, ConfigError
+from tokker import messages
+from tokker.cli.config import config
 
 
 def run_clear_history() -> None:
     """Clear saved model usage history."""
-    try:
-        history = config.load_history()
-    except ConfigError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    history = config.load_history()
 
     if not history:
-        print(strings.MSG_HISTORY_ALREADY_EMPTY)
+        print(messages.MSG_HISTORY_ALREADY_EMPTY)
         return
 
-    try:
-        config.clear_history()
-    except ConfigError as e:
-        print(strings.MSG_OPERATION_CANCELLED)
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    config.clear_history()
 
-    print(strings.MSG_HISTORY_CLEARED)
+    print(messages.MSG_HISTORY_CLEARED)

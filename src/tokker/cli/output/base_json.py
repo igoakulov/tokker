@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from typing import Any
 import re
+from typing import Any
 
 
 def build_base_json(
@@ -25,9 +25,9 @@ def build_base_json(
       - char_count
       - pivot (token -> frequency)
     """
-    _ts = tokenization_result.get('token_strings', [])
-    _tids = tokenization_result.get('token_ids', [])
-    _tcount = tokenization_result.get('token_count', 0)
+    _ts = tokenization_result.get("token_strings", [])
+    _tids = tokenization_result.get("token_ids", [])
+    _tcount = tokenization_result.get("token_count", 0)
 
     token_strings: list[str] = [str(s) for s in _ts] if isinstance(_ts, list) else []
     token_ids: list[int] = [int(i) for i in _tids] if isinstance(_tids, list) else []
@@ -49,12 +49,10 @@ def build_base_json(
     }
 
 
-
-
-
 # ---- helpers (kept local for base builder) ----
+
 
 def _count_words(text: str) -> int:
     if not text.strip():
         return 0
-    return len(re.findall(r'\S+', text))
+    return len(re.findall(r"\S+", text))

@@ -1,6 +1,6 @@
 from tokker.providers import Provider, PROVIDERS  # uses explicit registration via
 # decorators (providers register themselves via @register_provider)
-from tokker.exceptions import ModelNotFoundError, ModelLoadError
+
 
 class ModelRegistry:
     """
@@ -8,6 +8,7 @@ class ModelRegistry:
     delegate tokenization. Uses class-level MODELS for static mapping and
     probes HuggingFace for BYOM models.
     """
+
     def __init__(self):
         # Instantiated providers by provider name
         self._providers: dict[str, Provider] = {}
@@ -33,7 +34,7 @@ class ModelRegistry:
         """Rebuild model_name -> provider_name mapping from provider MODELS."""
         self._model_to_provider.clear()
         for provider_name, cls in self._provider_classes.items():
-            for model in (getattr(cls, "MODELS", []) or []):
+            for model in getattr(cls, "MODELS", []) or []:
                 self._model_to_provider[model] = provider_name
 
     def _ensure_provider_instance(self, provider_name: str) -> Provider:
@@ -42,11 +43,8 @@ class ModelRegistry:
             return self._providers[provider_name]
         cls = self._provider_classes.get(provider_name)
         if not cls:
-            raise ModelNotFoundError(provider_name)
-        try:
-            instance = cls()
-        except Exception as e:
-            raise ModelLoadError(provider_name, f"Failed to initialize provider: {e}")
+            raise Exception(f"Provider not found: {provider_name}")
+        instance = cls()  # let constructor errors bubble raw
         self._providers[provider_name] = instance
         return instance
 
@@ -61,9 +59,11 @@ class ModelRegistry:
 
         provider = self._ensure_provider_instance("HuggingFace")
         validate = getattr(provider, "validate_model_with_huggingface", None)
-        return getattr(provider, "NAME", "HuggingFace") if (
-            callable(validate) and validate(model_name)
-        ) else None
+        return (
+            getattr(provider, "NAME", "HuggingFace")
+            if (callable(validate) and validate(model_name))
+            else None
+        )
 
     # -------- public API --------
 
@@ -72,7 +72,7 @@ class ModelRegistry:
         self._ensure_discovered()
         provider_name = self._find_provider_for_model(model_name)
         if not provider_name:
-            raise ModelNotFoundError(model_name)
+            raise Exception(f"Model not found: {model_name}")
         return self._ensure_provider_instance(provider_name)
 
     def list_models(self, provider: str | None = None) -> list[dict[str, str]]:
@@ -100,11 +100,6 @@ class ModelRegistry:
         text: str,
         model_name: str,
     ) -> dict[str, str | int | list[str] | list[int]]:
-        """Tokenize text via the appropriate provider, normalizing load errors."""
-        try:
-            provider = self.get_provider(model_name)
-            return provider.tokenize(text, model_name)
-        except Exception as e:
-            if isinstance(e, ModelNotFoundError):
-                raise
-            raise ModelLoadError(model_name, str(e))
+        """Tokenize text via the appropriate provider; let exceptions bubble raw."""
+        provider = self.get_provider(model_name)
+        return provider.tokenize(text, model_name)

@@ -11,6 +11,7 @@ def register_provider(cls: type[Provider]) -> type[Provider]:
         PROVIDERS[name] = cls
     return cls
 
+
 # Ensure early import of built-in providers so their @register_provider runs.
 # This avoids dynamic filesystem scanning while keeping behavior explicit.
 # If a provider has optional dependencies, it should handle ImportError internally.

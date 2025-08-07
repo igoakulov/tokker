@@ -10,6 +10,7 @@ os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "us-central1")
 # Quiet Transformers internal logs unless there are actual errors.
 try:
     from transformers.utils import logging as hf_logging  # type: ignore
+
     try:
         hf_logging.set_verbosity_error()
     except Exception:

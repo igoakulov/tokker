@@ -14,6 +14,19 @@ HDR_HISTORY = "History:\n"
 GOOGLE_AUTH_GUIDE = "https://github.com/igoakulov/tokker/blob/main/google-auth-guide.md"
 MSG_AUTH_REQUIRED = f"\nAuth setup required   ->   {GOOGLE_AUTH_GUIDE}"
 
+# Centralized Google auth guidance (used by __main__.py)
+MSG_GOOGLE_AUTH_HEADER = "Google auth setup required for Gemini (takes ~3 mins):"
+# This line keeps the URL centralized and formatted
+MSG_GOOGLE_AUTH_GUIDE_LINE = f"  {GOOGLE_AUTH_GUIDE}"
+# Multi-line guidance steps (printed line by line)
+MSG_GOOGLE_AUTH_STEPS = [
+    "-----------",
+    "Alternatively, sign in via browser:",
+    "  1. Install this: https://cloud.google.com/sdk/docs/install",
+    "  2. Run this command:",
+    "     gcloud auth application-default login",
+]
+
 # ---- Messages ----
 MSG_INVALID_MODEL = "Invalid model: {model}."
 MSG_DEFAULT_SET = "Default model set to: {model}"
@@ -24,6 +37,29 @@ MSG_HISTORY_EMPTY = "History empty.\n"
 MSG_HISTORY_CLEARED = "History cleared."
 MSG_HISTORY_ALREADY_EMPTY = "History is already empty."
 MSG_OPERATION_CANCELLED = "Operation cancelled."
+# Output/format errors
+MSG_UNKNOWN_OUTPUT_FORMAT_FMT = (
+    "Unknown output format: {value}. Allowed: json, plain, count, pivot"
+)
+
+# CLI/global error and hint messages (for __main__.py mapping)
+# Unknown/invalid model hints
+MSG_MODEL_NOT_FOUND_FMT = "Model '{model}' not found."
+MSG_HINT_LIST_MODELS = "Run 'tok -M' to list available models."
+
+# Dependency hints (unified)
+MSG_DEP_HINT_FMT = (
+    "Package '{package}' is not installed. Install model provider packages:\n"
+    "  pip install 'tokker[all]'\n"
+    "  pip install 'tokker[tiktoken]'            - OpenAI\n"
+    "  pip install 'tokker[google-genai]'        - Google\n"
+    "  pip install 'tokker[transformers]'        - HuggingFace"
+)
+
+# Config/FS and generic error formats
+MSG_FILESYSTEM_ERROR_FMT = "Filesystem error: {err}"
+MSG_CONFIG_ERROR_FMT = "Configuration error: {err}"
+MSG_UNEXPECTED_ERROR_FMT = "Unexpected error: {err}"
 
 # ---- BYOM (HuggingFace) instructions ----
 BYOM_INSTRUCTIONS = [
@@ -50,8 +86,9 @@ BYOM_EXAMPLE_MODELS = [
     "mistralai/Devstral-Small-2507",
     "moonshotai/Kimi-K2-Instruct",
     "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-    "openai/gpt-oss-120b"
+    "openai/gpt-oss-120b",
 ]
+
 
 # ---- Output formats (CLI-level enum) ----
 class OutputFormat(Enum):
@@ -64,3 +101,14 @@ class OutputFormat(Enum):
     def values(cls) -> list[str]:
         """Return list of string values for argparse choices."""
         return [m.value for m in cls]
+
+
+# ---- Helper to standardize missing-dependency exceptions ----
+def missing_dep_error(package: str) -> RuntimeError:
+    """
+    Create a RuntimeError that mimics ImportError's canonical message:
+      "No module named 'PACKAGE'"
+    This exact text is recognized by the centralized error handler, which maps
+    it to MSG_DEP_HINT_FMT for user-friendly install guidance.
+    """
+    return RuntimeError(f"No module named '{package}'")

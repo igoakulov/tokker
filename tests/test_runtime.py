@@ -34,7 +34,9 @@ class TestRuntimeEnvironment(unittest.TestCase):
         # Build a fake transformers.utils.logging module structure
         transformers_pkg = cast(types.ModuleType, types.ModuleType("transformers"))
         utils_pkg = cast(types.ModuleType, types.ModuleType("transformers.utils"))
-        logging_mod = cast(types.ModuleType, types.ModuleType("transformers.utils.logging"))
+        logging_mod = cast(
+            types.ModuleType, types.ModuleType("transformers.utils.logging")
+        )
 
         def set_verbosity_error():
             # no-op; just to simulate that it exists
@@ -67,7 +69,9 @@ class TestRuntimeEnvironment(unittest.TestCase):
         # Provide minimal fake transformers logging module
         transformers_pkg = cast(types.ModuleType, types.ModuleType("transformers"))
         utils_pkg = cast(types.ModuleType, types.ModuleType("transformers.utils"))
-        logging_mod = cast(types.ModuleType, types.ModuleType("transformers.utils.logging"))
+        logging_mod = cast(
+            types.ModuleType, types.ModuleType("transformers.utils.logging")
+        )
 
         def set_verbosity_error():
             return None

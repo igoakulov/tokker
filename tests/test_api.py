@@ -2,7 +2,6 @@ import unittest
 from unittest.mock import patch, Mock
 
 from tokker import api
-from tokker.exceptions import ModelNotFoundError
 
 
 class TestAPI(unittest.TestCase):
@@ -64,19 +63,18 @@ class TestAPI(unittest.TestCase):
 
         result = api.tokenize("Hello world", "cl100k_base")
         self.assertEqual(result["token_count"], 2)
-        mock_registry.is_model_supported.assert_called_once_with("cl100k_base")
         mock_registry.tokenize.assert_called_once_with("Hello world", "cl100k_base")
 
     @patch("tokker.api.ModelRegistry")
-    def test_tokenize_unknown_model_raises(self, mock_registry_cls):
+    def test_tokenize_unknown_model_bubbles(self, mock_registry_cls):
         mock_registry = Mock()
         mock_registry_cls.return_value = mock_registry
-        mock_registry.is_model_supported.return_value = False
+        # api.tokenize no longer pre-validates; it should call registry.tokenize directly
+        mock_registry.tokenize.side_effect = RuntimeError("unknown model")
 
-        with self.assertRaises(ModelNotFoundError):
+        with self.assertRaises(Exception):
             api.tokenize("Hello", "__bogus__")
-        mock_registry.is_model_supported.assert_called_once_with("__bogus__")
-        mock_registry.tokenize.assert_not_called()
+        mock_registry.tokenize.assert_called_once_with("Hello", "__bogus__")
 
     @patch("tokker.api.tokenize")
     def test_count_tokens_prefers_token_count(self, mock_tokenize):
@@ -88,7 +86,9 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(api.count_tokens("abc", "cl100k_base"), 3)
 
     @patch("tokker.api.tokenize")
-    def test_count_tokens_fallback_to_len_token_ids_when_missing_count(self, mock_tokenize):
+    def test_count_tokens_fallback_to_len_token_ids_when_missing_count(
+        self, mock_tokenize
+    ):
         mock_tokenize.return_value = {
             "token_strings": ["a", "b", "c", "d"],
             "token_ids": [1, 2, 3, 4],

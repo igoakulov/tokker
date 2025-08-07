@@ -1,7 +1,7 @@
 # Runtime dependencies
 # Note: Provider integrations are optional extras defined in pyproject.toml
 # Install with extras, for example:
-#   pip install "tokker[tiktoken]"
-#   pip install "tokker[hf]"
-#   pip install "tokker[google]"
 #   pip install "tokker[all]"
+#   pip install "tokker[tiktoken]"
+#   pip install "tokker[transformers]"
+#   pip install "tokker[google-genai]"

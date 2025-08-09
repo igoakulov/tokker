@@ -1,11 +1,12 @@
+#!/usr/bin/env python3
 """
 Unit tests for ModelRegistry aligned with the current API.
 
 Covers:
 - Provider discovery snapshotting
 - Static model -> provider mapping from class-level MODELS
-- HuggingFace BYOM probing path (validate_model_with_huggingface)
-- Public APIs: list_models, get_providers, is_model_supported, get_provider, tokenize
+- HuggingFace BYOM probing path (is_on_huggingface)
+- Public APIs: list_models, get_providers, is_model_supported, get_provider_by_model, tokenize
 """
 
 import unittest
@@ -51,17 +52,17 @@ class TestModelRegistryBasics(unittest.TestCase):
         self.assertFalse(r.is_model_supported("__not_a_real_model__"))
 
     def test_get_provider_for_known_and_unknown(self):
-        """get_provider returns an instance for known models and errors for unknown."""
+        """get_provider_by_model returns an instance for known models and errors for unknown."""
         r = ModelRegistry()
 
         # Known OpenAI model should map to a provider instance
-        provider = r.get_provider("cl100k_base")
+        provider = r.get_provider_by_model("cl100k_base")
         self.assertTrue(hasattr(provider, "NAME"))
         self.assertTrue(hasattr(provider, "tokenize"))
 
-        # Unknown model should raise an exception (type no longer enforced)
+        # Unknown model should raise an exception
         with self.assertRaises(Exception):
-            r.get_provider("__not_a_real_model__")
+            r.get_provider_by_model("__not_a_real_model__")
 
 
 class TestTokenizeFlow(unittest.TestCase):
@@ -113,7 +114,7 @@ class TestHuggingFaceBYOMProbe(unittest.TestCase):
         # Fake an HF provider instance with a validate function returning True
         fake_hf_provider = Mock()
         fake_hf_provider.NAME = "HuggingFace"
-        fake_hf_provider.validate_model_with_huggingface.return_value = True
+        fake_hf_provider.is_on_huggingface.return_value = True
 
         def _ensure_side_effect(name):
             if name == "HuggingFace":
@@ -148,14 +149,14 @@ class TestHuggingFaceBYOMProbe(unittest.TestCase):
 
         fake_hf_provider = Mock()
         fake_hf_provider.NAME = "HuggingFace"
-        fake_hf_provider.validate_model_with_huggingface.return_value = False
+        fake_hf_provider.is_on_huggingface.return_value = False
         mock_ensure.return_value = fake_hf_provider
 
         # Use a bogus model name to avoid static index hits
         bogus_model = "__bogus_hf_model__"
         self.assertFalse(r.is_model_supported(bogus_model))
         with self.assertRaises(Exception):
-            r.get_provider(bogus_model)
+            r.get_provider_by_model(bogus_model)
 
 
 if __name__ == "__main__":

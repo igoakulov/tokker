@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
 
 from tokker import messages
 from tokker.cli.config import config
@@ -16,7 +15,7 @@ def run_set_default_model(model: str) -> None:
     registry = ModelRegistry()
 
     # Validate by resolving the provider; let exceptions bubble to the centralized handler
-    provider = registry.get_provider(model)
+    provider = registry.get_provider_by_model(model)
 
     # Persist selection on success
     config.set_default_model(model)
@@ -25,3 +24,4 @@ def run_set_default_model(model: str) -> None:
     provider_name = getattr(provider, "NAME", None) or "Unknown"
     print(messages.MSG_DEFAULT_SET_PROVIDER.format(model=model, provider=provider_name))
     print(messages.MSG_CONFIG_SAVED_TO.format(path=config.config_file))
+    pass

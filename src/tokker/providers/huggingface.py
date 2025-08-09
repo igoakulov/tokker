@@ -8,6 +8,20 @@ def _import_auto_tokenizer():  # Local helper
     try:
         from transformers import AutoTokenizer  # type: ignore
 
+        # Suppress Transformers advisory/logging noise as soon as it's imported.
+        # Do this in a guarded manner so missing submodules or API changes don't crash.
+        try:
+            from transformers.utils import logging as hf_logging  # type: ignore
+
+            try:
+                hf_logging.set_verbosity_error()
+            except Exception:
+                # If setting verbosity fails for any reason, ignore and continue.
+                pass
+        except Exception:
+            # If the logging module isn't available, ignore and continue.
+            pass
+
         return AutoTokenizer
     except Exception:
         raise messages.missing_dep_error("transformers")
@@ -58,7 +72,7 @@ class ProviderHuggingFace(Provider):
             "token_count": len(token_ids),
         }
 
-    def validate_model_with_huggingface(self, model_name: str) -> bool:
+    def is_on_huggingface(self, model_name: str) -> bool:
         if model_name in {
             "o200k_base",
             "cl100k_base",

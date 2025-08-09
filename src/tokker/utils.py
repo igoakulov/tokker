@@ -1,37 +1,32 @@
 #!/usr/bin/env python3
 """
-Shared, side-effect free helpers used by CLI and error handling.
+Lightweight shared helpers used by the CLI and error handling.
 
-Functions:
-- get_arg_value: extract a flag's value from argv (supports split and --flag=value syntax)
-- is_google_model: predicate for Google Gemini model name prefixes
-- get_installed_providers: detect which providers are actually usable in this environment
-- get_install_commands: map providers to install commands (strings from tokker.messages)
+This module intentionally avoids importing other tokker modules (like
+`tokker.messages`) at module import time so it stays cheap to import.
+It provides:
+- `get_arg_value` : extract a arg's value from argv (supports split and --arg=value)
+- `is_google_model` : heuristic predicate for Google Gemini model names
+- `get_version` : lightweight package version lookup that prefers importlib.metadata
+                and falls back to `tokker.__version__` then empty string
 """
 
 from collections.abc import Iterable
 
-from tokker import messages
+# Prefer the standard importlib.metadata API (Python >= 3.8)
+try:
+    from importlib import metadata
+except Exception:
+    metadata = None  # type: ignore
 
 
 def get_arg_value(argv: Iterable[str], *flags: str) -> str | None:
     """
     Return the value associated with a CLI flag from argv.
 
-    Useful for tokker flags like:
-      -m / --model             → model name to tokenize with
-      -D / --model-default     → model name to set as default
-
     Supported syntaxes:
-      1) Split form:        ["tok", "-m", "cl100k_base"]      → "cl100k_base"
-      2) --flag=value form: ["tok", "--model=cl100k_base"]    → "cl100k_base"
-
-    Args:
-        argv: An iterable of argument tokens (e.g., sys.argv)
-        *flags: One or more flag strings to match (e.g., "-m", "--model")
-
-    Returns:
-        The flag value (str) if found; otherwise None.
+      - Split form:        ["tok", "-m", "cl100k_base"]      -> "cl100k_base"
+      - --flag=value form: ["tok", "--model=cl100k_base"]    -> "cl100k_base"
     """
     try:
         xs = list(argv)
@@ -54,87 +49,34 @@ def get_arg_value(argv: Iterable[str], *flags: str) -> str | None:
 
 def is_google_model(model: str | None) -> bool:
     """
-    Return True if the provided model name looks like a Google Gemini model.
-
-    Heuristic (conservative):
-      - Name starts with "gemini-"
-      - Or name starts with "models/gemini-"
-
-    Args:
-        model: The model name or None
-
-    Returns:
-        True if the name resembles a Google Gemini model; otherwise False.
+    Return True if the provided model name starts with "gemini-" or "models/gemini-"
     """
     if not model:
         return False
     return model.startswith("gemini-") or model.startswith("models/gemini-")
 
 
-def get_installed_providers() -> set[str]:
+def get_version() -> str:
     """
-    Detect which provider integrations are actually usable in this environment
-    by checking whether their optional dependencies can be imported.
-
-    Providers:
-      - "OpenAI"     requires `tiktoken`
-      - "HuggingFace" requires `transformers`
-      - "Google"      requires `google-genai` (HttpOptions import)
-
-    Returns:
-        A set like {"OpenAI", "Google"} of installed providers.
+    Return the installed package version for "tokker". Resolution order:
+      1. importlib.metadata.version("tokker") -- preferred (no package import)
+      2. lazy read of `tokker.__version__` (may import the package; our top-level is minimal)
+      3. empty string
     """
-    installed: set[str] = set()
+    # 1) Try package metadata
+    if metadata is not None:
+        try:
+            return metadata.version("tokker")
+        except Exception:
+            pass
 
-    # OpenAI (tiktoken)
+    # 2) Fallback: try to read tokker.__version__ lazily
     try:
-        import tiktoken  # type: ignore  # noqa: F401
+        import tokker as _tokker  # package top-level is intentionally minimal
 
-        installed.add("OpenAI")
+        ver = getattr(_tokker, "__version__", None)
+        if isinstance(ver, str) and ver:
+            return ver
     except Exception:
         pass
-
-    # HuggingFace (transformers)
-    try:
-        import transformers  # type: ignore  # noqa: F401
-
-        installed.add("HuggingFace")
-    except Exception:
-        pass
-
-    # Google (google-genai)
-    try:
-        from google.genai.types import HttpOptions  # type: ignore  # noqa: F401
-
-        installed.add("Google")
-    except Exception:
-        pass
-
-    return installed
-
-
-def get_install_commands(providers: Iterable[str]) -> list[str]:
-    """
-    Map provider names to their install commands (strings). Order is stable.
-
-    Input providers should be a subset of:
-      "OpenAI", "Google", "HuggingFace"
-
-    Returns:
-      A list of raw command strings. For example, given ["Google", "HuggingFace"],
-      returns:
-        [
-          "pip install 'tokker[google-genai]'",
-          "pip install 'tokker[transformers]'",
-        ]
-    """
-    out: list[str] = []
-    name_to_cmd = {
-        "OpenAI": messages.CMD_INSTALL_TIKTOKEN,
-        "Google": messages.CMD_INSTALL_GOOGLE,
-        "HuggingFace": messages.CMD_INSTALL_TRANSFORMERS,
-    }
-    for name in ("OpenAI", "Google", "HuggingFace"):
-        if name in providers:
-            out.append(name_to_cmd[name])
-    return out
+    return ""

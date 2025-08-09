@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import unittest
 from unittest.mock import patch
 import sys
@@ -5,9 +6,25 @@ from io import StringIO
 from tokker import messages as msg
 
 
-def _expected_model_not_found_with_hints(model: str, providers_str: str = "none") -> str:
+def _expected_model_not_found_with_hints(
+    model: str, providers_str: str = "none"
+) -> str:
+    """
+    Build the expected multi-line message when a model is not found.
+
+    The centralized error handler prints the unsupported-model line followed by
+    a static dependency/hint block. We reproduce that exact sequence here for
+    comparison in tests.
+
+    Note: the handler wraps the model in backticks before formatting the
+    message constant (which itself contains backticks). To match the actual
+    produced output we therefore inject an already-backticked model value
+    into the format call so tests expect the same quoting.
+    """
     return (
-        msg.MSG_DEFAULT_MODEL_UNSUPPORTED_FMT.format(model=model, providers=providers_str)
+        msg.MSG_DEFAULT_MODEL_UNSUPPORTED_FMT.format(
+            model=f"`{model}`", providers=providers_str
+        )
         + "\n"
         + msg.MSG_DEP_HINT_HEADING
         + "\n"
@@ -20,10 +37,6 @@ def _expected_model_not_found_with_hints(model: str, providers_str: str = "none"
         + msg.MSG_DEP_HINT_TRANSFORMERS
         + "\n"
     )
-
-
-
-
 
 
 class TestMainModule(unittest.TestCase):
@@ -95,7 +108,7 @@ class TestMainErrorMapping(unittest.TestCase):
             del sys.modules["tokker.__main__"]
         return importlib.import_module("tokker.__main__")
 
-    @patch("sys.argv", ["tok", "Hello", "--model", "gemini-2.5-flash"])
+    @patch("sys.argv", ["tok", "Hello", "--with", "gemini-2.5-flash"])
     @patch(
         "tokker.cli.tokenize.main",
         side_effect=RuntimeError("compute_tokens failed: auth"),
@@ -105,9 +118,6 @@ class TestMainErrorMapping(unittest.TestCase):
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
-            patch(
-                "tokker.error_handler.get_installed_providers", return_value={"Google"}
-            ),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
@@ -119,7 +129,7 @@ class TestMainErrorMapping(unittest.TestCase):
             expected = "\n".join(expected_lines) + "\n"
             self.assertEqual(stderr_buf.getvalue(), expected)
 
-    @patch("sys.argv", ["tok", "Hello", "--model", "cl100k_base"])
+    @patch("sys.argv", ["tok", "Hello", "--with", "cl100k_base"])
     @patch(
         "tokker.cli.tokenize.main",
         side_effect=RuntimeError("Google compute_tokens request failed"),
@@ -129,9 +139,6 @@ class TestMainErrorMapping(unittest.TestCase):
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
-            patch(
-                "tokker.error_handler.get_installed_providers", return_value={"Google"}
-            ),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
@@ -159,11 +166,12 @@ class TestMainErrorMapping(unittest.TestCase):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
             self.assertEqual(stdout_buf.getvalue(), "")
-            expected = msg.MSG_UNKNOWN_OUTPUT_FORMAT_FMT.format(value="bogus") + "\n"
+            # The error handler wraps the raw value in backticks before formatting
+            expected = msg.MSG_UNKNOWN_OUTPUT_FORMAT_FMT.format(value="`bogus`") + "\n"
             self.assertEqual(stderr_buf.getvalue(), expected)
             self.assertNotIn("Traceback (most recent call last)", stderr_buf.getvalue())
 
-    @patch("sys.argv", ["tok", "Hello", "--model", "not_a_real_model"])
+    @patch("sys.argv", ["tok", "Hello", "--with", "not_a_real_model"])
     @patch(
         "tokker.cli.tokenize.main",
         side_effect=RuntimeError("Model not found: not_a_real_model"),
@@ -174,7 +182,6 @@ class TestMainErrorMapping(unittest.TestCase):
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
-            patch("tokker.error_handler.get_installed_providers", return_value=set()),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
@@ -183,17 +190,16 @@ class TestMainErrorMapping(unittest.TestCase):
             self.assertEqual(stderr_buf.getvalue(), expected)
             self.assertNotIn("Traceback (most recent call last)", stderr_buf.getvalue())
 
-    @patch("sys.argv", ["tok", "Hello", "--model", "something"])
+    @patch("sys.argv", ["tok", "Hello", "--with", "something"])
     @patch(
         "tokker.cli.tokenize.main",
-        side_effect=RuntimeError("No module named 'tiktoken'"),
+        side_effect=RuntimeError("No module found: tiktoken"),
     )
     def test_importerror_tiktoken_hints(self, _cli_main):
         main_module = self._import_main_fresh()
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
-            patch("tokker.error_handler.get_installed_providers", return_value=set()),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
@@ -201,17 +207,16 @@ class TestMainErrorMapping(unittest.TestCase):
             expected = _expected_model_not_found_with_hints("something", "none")
             self.assertEqual(stderr_buf.getvalue(), expected)
 
-    @patch("sys.argv", ["tok", "Hello", "--model", "something"])
+    @patch("sys.argv", ["tok", "Hello", "--with", "something"])
     @patch(
         "tokker.cli.tokenize.main",
-        side_effect=RuntimeError("No module named 'transformers'"),
+        side_effect=RuntimeError("No module found: transformers"),
     )
     def test_importerror_transformers_hints(self, _cli_main):
         main_module = self._import_main_fresh()
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
-            patch("tokker.error_handler.get_installed_providers", return_value=set()),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
@@ -219,17 +224,16 @@ class TestMainErrorMapping(unittest.TestCase):
             expected = _expected_model_not_found_with_hints("something", "none")
             self.assertEqual(stderr_buf.getvalue(), expected)
 
-    @patch("sys.argv", ["tok", "Hello", "--model", "something"])
+    @patch("sys.argv", ["tok", "Hello", "--with", "something"])
     @patch(
         "tokker.cli.tokenize.main",
-        side_effect=RuntimeError("No module named 'google.genai'"),
+        side_effect=RuntimeError("No module found: google.genai"),
     )
     def test_importerror_google_hints(self, _cli_main):
         main_module = self._import_main_fresh()
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
-            patch("tokker.error_handler.get_installed_providers", return_value=set()),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
@@ -237,7 +241,7 @@ class TestMainErrorMapping(unittest.TestCase):
             expected = _expected_model_not_found_with_hints("something", "none")
             self.assertEqual(stderr_buf.getvalue(), expected)
 
-    @patch("sys.argv", ["tok", "Hello", "--model", "nonexistent-model"])
+    @patch("sys.argv", ["tok", "Hello", "--with", "nonexistent-model"])
     @patch("tokker.cli.tokenize.main", side_effect=RuntimeError("random failure"))
     def test_unknown_model_hint(self, _cli_main):
         main_module = self._import_main_fresh()

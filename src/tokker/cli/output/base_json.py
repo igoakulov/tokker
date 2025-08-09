@@ -15,15 +15,6 @@ def build_base_json(
       - 'token_strings': list[str]
       - 'token_ids': list[int]
       - 'token_count': int
-
-    Returns a dict with:
-      - delimited_text
-      - token_strings
-      - token_ids
-      - token_count
-      - word_count
-      - char_count
-      - pivot (token -> frequency)
     """
     _ts = tokenization_result.get("token_strings", [])
     _tids = tokenization_result.get("token_ids", [])

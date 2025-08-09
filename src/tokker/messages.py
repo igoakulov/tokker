@@ -6,6 +6,9 @@ SEP_MAIN = "============"
 SEP_SUB = "------------"
 
 HDR_HISTORY = "History:\n"
+HDR_OPENAI = "OpenAI:\n"
+HDR_GOOGLE = "Google:\n"
+HDR_HF = "HuggingFace:\n"
 
 # ---- Links and guidance ----
 GOOGLE_AUTH_GUIDE = "https://github.com/igoakulov/tokker/blob/main/google-auth-guide.md"
@@ -21,9 +24,7 @@ MSG_DEFAULT_SET = "Default model set to: {model}"
 MSG_DEFAULT_SET_PROVIDER = "Default model set to: {model} ({provider})"
 MSG_CONFIG_SAVED_TO = "Configuration saved to: {path}"
 # Provider-aware validation message for -D/--model-default when unresolved
-MSG_DEFAULT_MODEL_UNSUPPORTED_FMT = (
-    "Model '{model}' not found with installed providers: {providers}."
-)
+MSG_DEFAULT_MODEL_UNSUPPORTED_FMT = "Model `{model}` not found."
 
 MSG_HISTORY_EMPTY = "History empty.\n"
 MSG_HISTORY_CLEARED = "History cleared."
@@ -31,7 +32,7 @@ MSG_HISTORY_ALREADY_EMPTY = "History is already empty."
 MSG_OPERATION_CANCELLED = "Operation cancelled."
 # Output/format errors
 MSG_UNKNOWN_OUTPUT_FORMAT_FMT = (
-    "Unknown output format: {value}. Allowed: json, plain, count, pivot"
+    "Unknown output format: {value}. Allowed: `color`, `json`, `count`, `pivot`, `del`"
 )
 
 # CLI/global error and hint messages (for __main__.py mapping)
@@ -58,13 +59,13 @@ MSG_UNEXPECTED_ERROR_FMT = "Unexpected error: {err}"
 # ---- BYOM (HuggingFace) instructions ----
 BYOM_INSTRUCTIONS = [
     "  1. Go to   ->   https://huggingface.co/models?library=transformers",
-    "  2. Search any model with TRANSFORMERS library support",
-    "  3. Copy its `USER/MODEL` into your command like:\n",
+    "  2. Search models within TRANSFORMERS library (some not supported yet)",
+    "  3. Copy its `USER/MODEL` into your command, for example:\n",
 ]
 
 # ---- OpenAI tokenizer descriptions ----
 OPENAI_DESCRIPTIONS = {
-    "o200k_base": "- for GPT-4o, o-family (o1, o3, o4)",
+    "o200k_base": "- for GPT-OSS, o-family (o1, o3, o4) and GPT-4o",
     "cl100k_base": "- for GPT-3.5 (late), GPT-4",
     "p50k_base": "- for GPT-3.5 (early)",
     "p50k_edit": "- for GPT-3 edit models (text-davinci, code-davinci)",
@@ -75,21 +76,22 @@ OPENAI_DESCRIPTIONS = {
 BYOM_EXAMPLE_MODELS = [
     "openai/gpt-oss-120b",
     "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-    "moonshotai/Kimi-K2-Instruct",
+    "zai-org/GLM-4.5",
     "deepseek-ai/DeepSeek-R1",
-    "google/gemma-3n-E4B-it",
+    "facebook/bart-base",
     "google-bert/bert-base-uncased",
-    "meta-llama/Meta-Llama-3.1-405B",
-    "mistralai/Devstral-Small-2507",
+    "google/electra-base-discriminator",
+    "microsoft/phi-4",
 ]
 
 
 # ---- Output formats (CLI-level enum) ----
 class OutputFormat(Enum):
-    JSON = "json"
-    PLAIN = "plain"
+    COLOR = "color"
     COUNT = "count"
+    JSON = "json"
     PIVOT = "pivot"
+    DEL = "del"
 
     @classmethod
     def values(cls) -> list[str]:
@@ -100,8 +102,6 @@ class OutputFormat(Enum):
 # ---- Helper to standardize missing-dependency exceptions ----
 def missing_dep_error(package: str) -> RuntimeError:
     """
-    Create a RuntimeError that mimics ImportError's canonical message:
-      "No module named 'PACKAGE'"
     This exact text is recognized by the centralized error handler, which maps
     it to MSG_DEP_HINT_FMT for user-friendly install guidance.
     """

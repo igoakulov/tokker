@@ -1,18 +1,18 @@
 # Tokker
 
-Tokker: a fast local-first CLI tokenizer with all the best models in one place.
+Tokker 0.3.9: a fast local-first CLI tokenizer with all the best models in one place.
 ---
 
 ## Features
 
 - **Simple Usage**: Just `tok 'your text'` - that's it!
 - **Models**:
-  - OpenAI: GPT-3, GPT-3.5, GPT-4, GPT-4o, o-family (o1, o3, o4)
+  - OpenAI: GPT-OSS, o-family (o1, o3, o4), GPT-4o, GPT-4, GPT-3.5, GPT-3
   - Google: the entire Gemini family
-  - HuggingFace: select literally [any model](https://huggingface.co/models?library=transformers) that supports `transformers` library
-- **Flexible Output**: JSON, plain text, count, and pivot output formats
+  - HuggingFace: popular models like Deepseek-R1, Qwen-3, GLM-4.5 and many other within [transformers](https://huggingface.co/models?library=transformers) library (some may not be supported yet)
+- **Output Formats**: color (like [this](https://platform.openai.com/tokenizer)), count, JSON, pivot, and more
 - **Text Analysis**: Token count, word count, character count, and token frequency
-- **Model History**: Track your usage with `--history` and `--history-clear`
+- **Model History**: See your recently used models
 - **Local-first**: Works locally on device (except Google)
 
 ---
@@ -34,176 +34,211 @@ pip install 'tokker[transformers]' # for models from HuggingFace
 ## Command Reference
 
 ```
-usage: tok [-h] [-m MODEL] [-o {json,plain,count,pivot}] [-D MODEL_DEFAULT] [-M]
-           [-H] [-X]
+usage: tok [--help] [-w MODEL] [-o {color,count,json,pivot,del}] [-m] [-c]
+           [-dm MODEL] [-do OUTPUT] [-h] [-x]
            [text]
 
-Tokker: a fast local-first CLI tokenizer with all the best models in one place
+Tokker 0.3.9: a fast local-first CLI tokenizer with all the best models in one place
 
 positional arguments:
-  text                  text to tokenize (or read from stdin if not provided)
+  text                  text to tokenize (or read from stdin)
 
 options:
-  -h, --help            show this help message and exit
-  -m, --model MODEL     model to use (overrides default)
-  -o, --output {json,plain,count,pivot}
-                        output format (default: json)
-  -D, --model-default MODEL_DEFAULT
+  --help                (or just `tok`) to show this help message
+  -w, --with MODEL      with specific (non-default) model
+  -o, --output {color,count,json,pivot,del}
+                        output format
+  -m, --models          list all models
+  -c, --config          show config with settings
+  -dm, --default-model MODEL
                         set default model
-  -M, --models          list all models
-  -H, --history         show history of used models
-  -X, --history-clear   clear history
-
-============
-Examples:
-  echo 'Hello world' | tok
-  tok 'Hello world'
-  tok 'Hello world' -m deepseek-ai/DeepSeek-R1
-  tok 'Hello world' -m gemini-2.5-pro -o count
-  tok 'Hello world' -o pivot
-  tok -D cl100k_base
-============
-Install model providers:
-  pip install 'tokker[all]'                 - all at once
-  pip install 'tokker[tiktoken]'            - OpenAI
-  pip install 'tokker[transformers]'        - HuggingFace
-  pip install 'tokker[google-genai]'        - Google
-
-Google auth setup   →   https://github.com/igoakulov/tokker/blob/main/google-auth-guide.md
+  -do, --default-output OUTPUT
+                        set default output
+  -h, --history         show history of used models
+  -x, --history-clear   clear history
 ```
 
 ## Usage
 
-### Tokenize Text
+### Tokenization
 
 When using `bash` or `zsh`, wrap input text in **single** quotes ('like this') to avoid conflicts with special characters like `!`.
 
 ```bash
-# Tokenize with default model
-tok 'Hello world'
+# Tokenize with default model (o200k_base) and output (color)
+$ tok 'Hello world!'
+# Get pivot summary of token frequencies
+$ tok 'Hello world!' -o pivot
+# Tokenize with Deepseek-R1
+$ tok 'Hello world!' -w zai-org/GLM-4.5
+# Get just the count with Gemini-2.5-pro
+$ tok 'Hello world!' -w gemini-2.5-pro -o count
 
-# Get a specific output format
-tok 'Hello world' -o plain
-
-# Use a specific model
-tok 'Hello world' -m openai/gpt-oss-120b
-
-# Get just the counts
-tok 'Hello world' -m gemini-2.5-pro -o count
 ```
 
 ### Pipeline Usage
 
 ```bash
 # Process files
-cat document.txt | tok -m deepseek-ai/DeepSeek-R1 -o count
+$ cat document.txt | tok -w deepseek-ai/DeepSeek-R1 -o count
 
 # Chain with other tools
-curl -s https://example.com | tok -m bert-base-uncased
+$ curl -s https://example.com | tok -w openai/gpt-oss-120b
 
 # Compare models
-echo "Machine learning is awesome" | tok -m openai/gpt-oss-120b
-echo "Machine learning is awesome" | tok -m bert-base-uncased
+$ echo "I'm tired boss, I can't do matmul anymore" | tok -w gemini-2.5-flash
+$ echo "I'm tired boss, I can't do matmul anymore" | tok -w gemini-2.0-flash
 ```
 
-### List Available Models
+### Models
 
 ```bash
-# See all available models
-tok -M
+# List all available models
+$ tok -m
 ```
 
 Output:
-```
+```text
 ============
-OpenAI (installed)
+OpenAI:
 
-  o200k_base            - for GPT-4o, o-family (o1, o3, o4)
-  cl100k_base           - for GPT-3.5 (late), GPT-4
-  p50k_base             - for GPT-3.5 (early)
-  p50k_edit             - for GPT-3 edit models (text-davinci, code-davinci)
-  r50k_base             - for GPT-3 base models (davinci, curie, babbage, ada)
+o200k_base            - for GPT-OSS, o-family (o1, o3, o4) and GPT-4o
+cl100k_base           - for GPT-3.5 (late), GPT-4
+p50k_base             - for GPT-3.5 (early)
+p50k_edit             - for GPT-3 edit models (text-davinci, code-davinci)
+r50k_base             - for GPT-3 base models (davinci, curie, babbage, ada)
 ------------
-Google (installed)
+Google:
 
-  gemini-2.5-pro
-  gemini-2.5-flash-lite
-  gemini-2.5-flash
-  gemini-2.0-flash-lite
-  gemini-2.0-flash
+gemini-2.5-pro
+gemini-2.5-flash-lite
+gemini-2.5-flash
+gemini-2.0-flash-lite
+gemini-2.0-flash
 
 Auth setup required   ->   https://github.com/igoakulov/tokker/blob/main/google-auth-guide.md
 ------------
-HuggingFace (installed)
+HuggingFace:
 
   1. Go to   ->   https://huggingface.co/models?library=transformers
-  2. Search any model with TRANSFORMERS library support
-  3. Copy its `USER/MODEL` into your command like:
+  2. Search models within TRANSFORMERS library (some not supported yet)
+  3. Copy its `USER/MODEL` into your command, for example:
 
-  openai/gpt-oss-120b
-  Qwen/Qwen3-Coder-480B-A35B-Instruct
-  moonshotai/Kimi-K2-Instruct
-  deepseek-ai/DeepSeek-R1
-  google/gemma-3n-E4B-it
-  google-bert/bert-base-uncased
-  meta-llama/Meta-Llama-3.1-405B
-  mistralai/Devstral-Small-2507
+openai/gpt-oss-120b
+Qwen/Qwen3-Coder-480B-A35B-Instruct
+zai-org/GLM-4.5
+deepseek-ai/DeepSeek-R1
+facebook/bart-base
+google-bert/bert-base-uncased
+google/electra-base-discriminator
+microsoft/phi-4
 ============
 ```
 
-### Set Default Model
+### Config
 
+Stored locally in `~/.config/tokker/config.json`.
+
+Show config:
 ```bash
-# Set your preferred model
-tok -D o200k_base
+# Show config with settings
+$ tok -c
+```
+
+Returns:
+```text
+{
+  "default_model": "o200k_base",
+  "default_output": "color",
+  "delimiter": "⎮"
+}
+```
+
+Set defaults:
+```bash
+# Set a Deepseek-R1 as the default model
+$ tok -dm deepseek-ai/DeepSeek-R1
+# Set count as the default output
+$ tok -do count
 ```
 
 ### History
 
-```bash
-# View your model usage history with date/time
-tok -H
+Stored locally in `~/.config/tokker/history.json`.
 
-# Clear your history (will prompt for confirmation)
-tok -X
+Show history:
+```bash
+$ tok -h
 ```
 
-History is stored locally in `~/.config/tokker/history.json`.
+Returns:
+```text
+============
+History:
 
+gemini-2.5-pro                  2025-08-09 19:58
+cl100k_base                     2025-08-09 19:52
+gpt2                            2025-08-08 16:23
+============
+```
+
+Clear history:
+```bash
+# Does not ask for confirmation
+$ tok -x
+```
 
 ---
 
 ## Output Formats
 
-### Full JSON Output (Default)
+### Color Output (Default)
 
+- Marks each token with an alternating color.
+- Color formatting does not render in the example below, but it's like [this](https://platform.openai.com/tokenizer).
+- Color formatting is not preserved when copying the CLI output.
+
+Command:
 ```bash
-tok 'Hello world'
-{
-  "delimited_text": "Hello⎮ world",
-  "token_strings": ["Hello", " world"],
-  "token_ids": [24912, 2375],
-  "token_count": 2,
-  "word_count": 2,
-  "char_count": 11
-}
+$ tok 'Hello world!'
 ```
 
-### Plain Text Output
+Returns:
+```text
+Hello world!
+3 tokens, 2 words, 12 chars
+```
 
+### Del (=Delimited) Output
+
+- Preserves visual token separation when you copy (unlike color)
+- After pasting, remove "⎮" easily with Find & Replace if needed
+- "⎮" (U+23AE VERTICAL LINE EXTENSION) is a rare symbol, and will not interfere with the standard "|" (U+007C VERTICAL LINE)
+
+Command:
 ```bash
-tok 'Hello world' -o plain
-Hello⎮ world
+$ tok 'Hello world!' -o del
+```
+
+Returns:
+```text
+Hello⎮ world⎮!
+3 tokens, 2 words, 12 chars
 ```
 
 ### Count Output
 
+Command:
 ```bash
-tok 'Hello world' -o count
+$ tok 'Hello world!' -o count
+```
+
+Returns:
+```text
 {
-  "token_count": 2,
+  "token_count": 3,
   "word_count": 2,
-  "char_count": 11
+  "char_count": 12
 }
 ```
 
@@ -211,9 +246,13 @@ tok 'Hello world' -o count
 
 The pivot output prints a JSON object with token frequencies, sorted by highest count first, then by token (A–Z).
 
-Example:
+Command:
 ```bash
-tok 'never gonna give you up neve gonna let you down' -m cl100k_base -o pivot
+tok 'never gonna give you up neve gonna let you down' -o pivot
+```
+
+Returns:
+```text
 {
   " gonna": 2,
   " you": 2,
@@ -227,16 +266,22 @@ tok 'never gonna give you up neve gonna let you down' -m cl100k_base -o pivot
 }
 ```
 
----
+### Full JSON Output
 
-## Configuration
+Command:
+```bash
+tok 'Hello world!' -o json
+```
 
-Your configuration is stored locally in `~/.config/tokker/config.json`:
-
-```json
+Returns:
+```text
 {
-  "default_model": "o200k_base",
-  "delimiter": "⎮"
+  "delimited_text": "Hello⎮ world⎮!",
+  "token_strings": ["Hello", " world", "!"],
+  "token_ids": [9906, 1917, 0],
+  "token_count": 3,
+  "word_count": 2,
+  "char_count": 12
 }
 ```
 

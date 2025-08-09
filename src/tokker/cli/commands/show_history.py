@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 from tokker import messages
-from tokker.cli.config import config
+from tokker.cli import config, History
 
 
 def run_show_history() -> None:
-    """Display model usage history."""
-    history = config.load_history()
+    history = History(config.config_dir).load()
 
     print(messages.SEP_MAIN)
     print(messages.HDR_HISTORY)
@@ -15,11 +14,11 @@ def run_show_history() -> None:
         print(messages.SEP_MAIN)
         return
 
-    # List entries (most recent first)
     for entry in history:
         model_name = entry.get("model", "unknown")
         timestamp = entry.get("timestamp", "")
         ts = str(timestamp).replace("T", " ")[:16]
-        print(f"  {model_name:<32}{ts}")
+        print(f"{model_name:<32}{ts}")
 
     print(messages.SEP_MAIN)
+    pass

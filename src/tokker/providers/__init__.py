@@ -1,39 +1,47 @@
-# Import the abstract base class for providers
+"""
+Provider registry public surface.
+
+This package-level module intentionally keeps a minimal import-time footprint:
+- It exposes the Provider ABC, the global PROVIDERS registry, and the
+  @register_provider decorator used by provider implementations.
+- It does NOT import provider modules or re-export loader helpers to keep
+  startup fast and optional dependencies lazy.
+- Import helpers live in `tokker.providers.imports` and should be imported
+  directly by callers that need to trigger provider module imports.
+"""
+
 from .provider import Provider
 
-# Global mapping of provider name -> provider class
+# Global mapping of provider display name -> provider class
 PROVIDERS: dict[str, type[Provider]] = {}
 
 
 def register_provider(cls: type[Provider]) -> type[Provider]:
+    """
+    Decorator used by provider modules to register their provider class.
+
+    Idempotent: re-registering the same NAME is a no-op.
+
+    Usage:
+        @register_provider
+        class ProviderTiktoken(Provider):
+            NAME = "OpenAI"
+            ...
+    """
     name = getattr(cls, "NAME", None)
     if isinstance(name, str) and name and name not in PROVIDERS:
         PROVIDERS[name] = cls
     return cls
 
 
-# Ensure early import of built-in providers so their @register_provider runs.
-# This avoids dynamic filesystem scanning while keeping behavior explicit.
-# If a provider has optional dependencies, it should handle ImportError internally.
-try:
-    from . import tiktoken as _tiktoken_provider  # noqa
-except Exception:
-    # Optional dependency may not be installed; skip silent import failure
-    pass
-
-try:
-    from . import huggingface as _huggingface_provider  # noqa
-except Exception:
-    pass
-
-try:
-    from . import google as _google_provider  # noqa
-except Exception:
-    pass
+def list_registered() -> list[str]:
+    """Return a sorted list of registered provider display names."""
+    return sorted(PROVIDERS.keys())
 
 
 __all__ = [
     "Provider",
     "register_provider",
     "PROVIDERS",
+    "list_registered",
 ]

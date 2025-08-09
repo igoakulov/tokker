@@ -8,7 +8,7 @@ clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	rm -rf .ropeproject .pytest_cache
 	rm -rf .ruff_cache
-	@echo "REMINDER: Update version in pyproject.toml before building."
+	@echo "REMINDER: Update version in pyproject.toml and __init__.py before building!"
 
 build: clean
 	PYTHONPATH=./src python -m build

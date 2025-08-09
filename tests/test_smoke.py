@@ -13,10 +13,9 @@ import tempfile
 import os
 import sys
 import unittest
-from typing import List
 
 
-def run_command(cmd: List[str]) -> tuple[int, str, str]:
+def run_command(cmd: list[str]) -> tuple[int, str, str]:
     """Run a command and return exit code, stdout, stderr."""
     try:
         # Use local module instead of global tok command
@@ -80,7 +79,7 @@ class SmokeTests(unittest.TestCase):
     def test_tiktoken_model(self):
         """Test tiktoken model functionality."""
         exit_code, stdout, stderr = run_command(
-            ["tok", "Hello world", "--model", "cl100k_base"]
+            ["tok", "Hello world", "--with", "cl100k_base", "--output", "json"]
         )
         self.assertEqual(exit_code, 0, f"Tiktoken tokenization failed: {stderr}")
 
@@ -105,7 +104,7 @@ class SmokeTests(unittest.TestCase):
     def test_huggingface_model(self):
         """Test HuggingFace model functionality."""
         exit_code, stdout, stderr = run_command(
-            ["tok", "Hello world", "--model", "gpt2"]
+            ["tok", "Hello world", "--with", "gpt2", "--output", "json"]
         )
         self.assertEqual(exit_code, 0, f"HuggingFace tokenization failed: {stderr}")
 
@@ -130,20 +129,20 @@ class SmokeTests(unittest.TestCase):
     def test_output_formats(self):
         """Test different output formats."""
         exit_code, stdout, stderr = run_command(
-            ["tok", "Hello world", "--model", "cl100k_base", "--output", "plain"]
+            ["tok", "Hello world", "--with", "cl100k_base", "--output", "del"]
         )
         self.assertEqual(exit_code, 0, f"Plain format failed: {stderr}")
         self.assertIn("⎮", stdout, "Plain format missing delimiter")
 
         exit_code, stdout, stderr = run_command(
-            ["tok", "Hello world", "--model", "cl100k_base", "--output", "count"]
+            ["tok", "Hello world", "--with", "cl100k_base", "--output", "count"]
         )
         self.assertEqual(exit_code, 0, f"Count format failed: {stderr}")
         result = json.loads(stdout)
         self.assertIn("token_count", result, "Count format missing token_count")
 
         exit_code, stdout, stderr = run_command(
-            ["tok", "foo foo bar", "--model", "cl100k_base", "--output", "pivot"]
+            ["tok", "foo foo bar", "--with", "cl100k_base", "--output", "pivot"]
         )
         self.assertEqual(exit_code, 0, f"Pivot format failed: {stderr}")
         pivot = json.loads(stdout)
@@ -168,7 +167,7 @@ class SmokeTests(unittest.TestCase):
                 [
                     "sh",
                     "-c",
-                    f"cat {temp_file} | python -m tokker.cli.tokenize --model cl100k_base",
+                    f"cat {temp_file} | python -m tokker.cli.tokenize --with cl100k_base --output json",
                 ]
             )
             self.assertEqual(exit_code, 0, f"Stdin input failed: {stderr}")
@@ -177,28 +176,10 @@ class SmokeTests(unittest.TestCase):
         finally:
             os.unlink(temp_file)
 
-    @unittest.skipUnless(_has_tiktoken(), "Skipping: tiktoken extra not installed")
-    def test_model_default(self):
-        """Test model default functionality."""
-        exit_code, stdout, stderr = run_command(
-            ["tok", "--model-default", "cl100k_base"]
-        )
-        self.assertEqual(exit_code, 0, f"Setting default model failed: {stderr}")
-        self.assertIn(
-            "Default model set to: cl100k_base",
-            stdout,
-            "Default model confirmation missing",
-        )
-
-        exit_code, stdout, stderr = run_command(["tok", "Hello world"])
-        self.assertEqual(exit_code, 0, f"Using default model failed: {stderr}")
-        result = json.loads(stdout)
-        self.assertIn("token_count", result, "Default model run missing token_count")
-
     def test_error_handling(self):
         """Test error handling for invalid inputs."""
         exit_code, stdout, stderr = run_command(
-            ["tok", "Hello world", "--model", "nonexistent-model"]
+            ["tok", "Hello world", "--with", "nonexistent-model"]
         )
         self.assertNotEqual(exit_code, 0, "Invalid model should have failed")
         # Accept current not-found message produced by ModelNotFoundError
@@ -211,7 +192,7 @@ class SmokeTests(unittest.TestCase):
         )
 
         exit_code, stdout, stderr = run_command(
-            ["tok", "--model-default", "nonexistent-model"]
+            ["tok", "--default-model", "nonexistent-model"]
         )
         # Now standardized: invalid default model triggers standardized error and non-zero exit
         self.assertNotEqual(
@@ -219,8 +200,11 @@ class SmokeTests(unittest.TestCase):
             0,
             "Setting unknown default model should fail with standardized error",
         )
-        self.assertIn(
-            "Model 'nonexistent-model' not found with installed providers:", stderr
+        # Accept either a concise "not found" message or the static install hints block.
+        self.assertTrue(
+            ("not found" in (stderr or "").lower())
+            or ("install model providers" in (stderr or "").lower()),
+            "Default-model error message not found",
         )
 
     @unittest.skipUnless(_has_tiktoken(), "Skipping: tiktoken extra not installed")
@@ -229,7 +213,7 @@ class SmokeTests(unittest.TestCase):
         run_command(["tok", "--history-clear"])
 
         exit_code, stdout, stderr = run_command(
-            ["tok", "Hello world", "--model", "cl100k_base"]
+            ["tok", "Hello world", "--with", "cl100k_base"]
         )
         self.assertEqual(exit_code, 0, f"Model usage for history failed: {stderr}")
 

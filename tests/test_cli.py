@@ -1,5 +1,5 @@
 """
-Unit tests for CLI functionality aligned with the new structure.
+Unit tests for CLI functionality aligned with the current structure.
 
 Tests the CLI argument parsing, command handling, and output formatting.
 """
@@ -39,18 +39,20 @@ class TestCLIParser(unittest.TestCase):
         # Test with text argument
         args = self.parser.parse_args(["Hello world"])
         self.assertEqual(args.text, "Hello world")
-        self.assertIsNone(args.model)
-        self.assertEqual(args.output, "json")
+        # CLI accepts --model / --with which maps to `model` dest
+        self.assertIsNone(getattr(args, "model", None))
+        # default output is 'color' by default in the current CLI
+        self.assertEqual(args.output, "color")
 
         # Test with model
-        args = self.parser.parse_args(["Hello world", "--model", "gpt2"])
+        args = self.parser.parse_args(["Hello world", "--with", "gpt2"])
         self.assertEqual(args.text, "Hello world")
-        self.assertEqual(args.model, "gpt2")
+        self.assertEqual(getattr(args, "with", None), "gpt2")
 
-        # Test with output format
-        args = self.parser.parse_args(["Hello world", "--output", "plain"])
+        # Test with output format (use canonical 'del' for delimited/plain)
+        args = self.parser.parse_args(["Hello world", "--output", "del"])
         self.assertEqual(args.text, "Hello world")
-        self.assertEqual(args.output, "plain")
+        self.assertEqual(args.output, "del")
 
     def test_models_args(self):
         """Test models list arguments."""
@@ -72,15 +74,15 @@ class TestCLIParser(unittest.TestCase):
 
     def test_model_default_args(self):
         """Test model default arguments."""
-        args = self.parser.parse_args(["--model-default", "cl100k_base"])
-        self.assertEqual(args.model_default, "cl100k_base")
+        args = self.parser.parse_args(["--default-model", "cl100k_base"])
+        self.assertEqual(args.default_model, "cl100k_base")
 
     def test_no_args(self):
         """Test parsing with no arguments (stdin mode)."""
         args = self.parser.parse_args([])
         self.assertIsNone(args.text)
         self.assertFalse(args.models)
-        self.assertIsNone(args.model_default)
+        self.assertIsNone(args.default_model)
 
 
 class TestListModelsCommand(unittest.TestCase):
@@ -142,7 +144,7 @@ class TestSetDefaultModelCommand(unittest.TestCase):
         mock_config.config_file = "/path/to/config.json"
 
         # Ensure provider mock has a NAME attribute to match output format
-        mock_registry.get_provider.return_value = Mock(NAME="OpenAI")
+        mock_registry.get_provider_by_model.return_value = Mock(NAME="OpenAI")
 
         # Call function
         run_set_default_model("cl100k_base")
@@ -163,14 +165,18 @@ class TestTokenizeCommand(unittest.TestCase):
 
     @patch("tokker.cli.commands.tokenize_text.ModelRegistry")
     @patch("tokker.cli.commands.tokenize_text.config")
+    @patch("tokker.cli.commands.tokenize_text.History")
     @patch("tokker.cli.output.formats.print")
     def test_tokenize_with_specific_model(
-        self, mock_print, mock_config, mock_registry_cls
+        self, mock_print, mock_history_cls, mock_config, mock_registry_cls
     ):
         """Test tokenization with specific model."""
         # Mock config
         mock_config.get_delimiter.return_value = "⎮"
-        mock_config.add_model_to_history.return_value = None
+
+        # Mock History (avoid FS writes)
+        mock_history = Mock()
+        mock_history_cls.return_value = mock_history
 
         # Mock registry
         mock_registry = Mock()
@@ -208,12 +214,18 @@ class TestTokenizeCommand(unittest.TestCase):
 
     @patch("tokker.cli.commands.tokenize_text.ModelRegistry")
     @patch("tokker.cli.commands.tokenize_text.config")
+    @patch("tokker.cli.commands.tokenize_text.History")
     @patch("tokker.cli.output.formats.print")
-    def test_tokenize_pivot_output(self, mock_print, mock_config, mock_registry_cls):
+    def test_tokenize_pivot_output(
+        self, mock_print, mock_history_cls, mock_config, mock_registry_cls
+    ):
         """Test pivot output prints a token frequency map in JSON."""
         # Mock config
         mock_config.get_delimiter.return_value = "⎮"
-        mock_config.add_model_to_history.return_value = None
+
+        # Mock History (avoid FS writes)
+        mock_history = Mock()
+        mock_history_cls.return_value = mock_history
 
         # Mock registry and tokenization result with duplicate tokens for pivot
         mock_registry = Mock()
@@ -241,15 +253,19 @@ class TestTokenizeCommand(unittest.TestCase):
 
     @patch("tokker.cli.commands.tokenize_text.ModelRegistry")
     @patch("tokker.cli.commands.tokenize_text.config")
+    @patch("tokker.cli.commands.tokenize_text.History")
     @patch("tokker.cli.output.formats.print")
     def test_tokenize_with_default_model(
-        self, mock_print, mock_config, mock_registry_cls
+        self, mock_print, mock_history_cls, mock_config, mock_registry_cls
     ):
         """Test tokenization with default model."""
         # Mock config
         mock_config.get_default_model.return_value = "cl100k_base"
         mock_config.get_delimiter.return_value = "⎮"
-        mock_config.add_model_to_history.return_value = None
+
+        # Mock History (avoid FS writes)
+        mock_history = Mock()
+        mock_history_cls.return_value = mock_history
 
         # Mock registry
         mock_registry = Mock()
@@ -294,7 +310,7 @@ class TestTokenizeCommand(unittest.TestCase):
 class TestMainFunction(unittest.TestCase):
     """Test cases for main CLI entry point."""
 
-    @patch("tokker.cli.tokenize.run_list_models")
+    @patch("tokker.cli.commands.list_models.run_list_models")
     @patch("sys.argv", ["tok", "--models"])
     def test_main_models(self, mock_handle_models):
         """Test main function with models command."""
@@ -302,15 +318,15 @@ class TestMainFunction(unittest.TestCase):
         self.assertEqual(result, 0)
         mock_handle_models.assert_called_once()
 
-    @patch("tokker.cli.tokenize.run_set_default_model")
-    @patch("sys.argv", ["tok", "--model-default", "gpt2"])
+    @patch("tokker.cli.commands.set_default_model.run_set_default_model")
+    @patch("sys.argv", ["tok", "--default-model", "gpt2"])
     def test_main_model_default(self, mock_handle_default):
         """Test main function with model default command."""
         result = cli_main()
         self.assertEqual(result, 0)
         mock_handle_default.assert_called_once_with("gpt2")
 
-    @patch("tokker.cli.tokenize.run_show_history")
+    @patch("tokker.cli.commands.show_history.run_show_history")
     @patch("sys.argv", ["tok", "--history"])
     def test_main_history(self, mock_handle_history):
         """Test main function with history command."""
@@ -318,7 +334,7 @@ class TestMainFunction(unittest.TestCase):
         self.assertEqual(result, 0)
         mock_handle_history.assert_called_once()
 
-    @patch("tokker.cli.tokenize.run_clear_history")
+    @patch("tokker.cli.commands.clear_history.run_clear_history")
     @patch("sys.argv", ["tok", "--history-clear"])
     def test_main_history_clear(self, mock_handle_clear):
         """Test main function with history clear command."""
@@ -326,22 +342,24 @@ class TestMainFunction(unittest.TestCase):
         self.assertEqual(result, 0)
         mock_handle_clear.assert_called_once()
 
-    @patch("tokker.cli.tokenize.run_tokenize")
+    @patch("tokker.cli.commands.tokenize_text.run_tokenize")
     @patch("sys.argv", ["tok", "Hello world"])
     def test_main_tokenize(self, mock_handle_tokenize):
         """Test main function with tokenize command."""
         result = cli_main()
         self.assertEqual(result, 0)
-        mock_handle_tokenize.assert_called_once_with("Hello world", None, "json")
+        # default output is 'color' in current CLI behavior
+        mock_handle_tokenize.assert_called_once_with("Hello world", None, "color")
 
-    @patch("tokker.cli.tokenize.run_tokenize")
-    @patch("sys.stdin", StringIO("Hello from stdin"))
+    @patch("tokker.cli.commands.tokenize_text.run_tokenize")
+    @patch("tokker.cli.tokenize.sys.stdin", StringIO("Hello from stdin"))
     @patch("sys.argv", ["tok"])
     def test_main_stdin(self, mock_handle_tokenize):
         """Test main function with stdin input."""
         result = cli_main()
         self.assertEqual(result, 0)
-        mock_handle_tokenize.assert_called_once_with("Hello from stdin", None, "json")
+        # default output is 'color' in current CLI behavior
+        mock_handle_tokenize.assert_called_once_with("Hello from stdin", None, "color")
 
 
 class TestGoogleAuthMapping(unittest.TestCase):
@@ -355,7 +373,7 @@ class TestGoogleAuthMapping(unittest.TestCase):
             del sys.modules["tokker.__main__"]
         return importlib.import_module("tokker.__main__")
 
-    @patch("sys.argv", ["tok", "Hello", "--model", "gemini-2.5-flash"])
+    @patch("sys.argv", ["tok", "Hello", "--with", "gemini-2.5-flash"])
     @patch(
         "tokker.cli.tokenize.main",
         side_effect=RuntimeError("auth error: compute_tokens failed"),
@@ -368,9 +386,6 @@ class TestGoogleAuthMapping(unittest.TestCase):
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
-            patch(
-                "tokker.error_handler.get_installed_providers", return_value={"Google"}
-            ),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
@@ -382,7 +397,7 @@ class TestGoogleAuthMapping(unittest.TestCase):
             expected = "\n".join(expected_lines) + "\n"
             self.assertEqual(stderr_buf.getvalue(), expected)
 
-    @patch("sys.argv", ["tok", "Hello", "--model", "gemini-2.5-flash"])
+    @patch("sys.argv", ["tok", "Hello", "--with", "gemini-2.5-flash"])
     @patch("tokker.cli.tokenize.main", side_effect=RuntimeError("auth error"))
     def test_google_adc_missing_file_or_generic_error_still_guidance(self, _cli_main):
         """When ADC is unspecified and a generic auth error occurs, show guidance."""
@@ -392,9 +407,6 @@ class TestGoogleAuthMapping(unittest.TestCase):
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
-            patch(
-                "tokker.error_handler.get_installed_providers", return_value={"Google"}
-            ),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
@@ -406,7 +418,7 @@ class TestGoogleAuthMapping(unittest.TestCase):
             expected = "\n".join(expected_lines) + "\n"
             self.assertEqual(stderr_buf.getvalue(), expected)
 
-    @patch("sys.argv", ["tok", "Hello", "--model", "gemini-2.5-flash"])
+    @patch("sys.argv", ["tok", "Hello", "--with", "gemini-2.5-flash"])
     @patch(
         "tokker.cli.tokenize.main", side_effect=RuntimeError("original google error")
     )
@@ -418,9 +430,6 @@ class TestGoogleAuthMapping(unittest.TestCase):
         with (
             patch("sys.stderr", new_callable=StringIO) as stderr_buf,
             patch("sys.stdout", new_callable=StringIO) as stdout_buf,
-            patch(
-                "tokker.error_handler.get_installed_providers", return_value={"Google"}
-            ),
         ):
             rc = main_module.main()
             self.assertNotEqual(rc, 0)
